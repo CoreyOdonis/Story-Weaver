@@ -40,3 +40,42 @@ export const GenerateStoryResponse = zod.object({
   story: zod.string().describe("The full story text"),
   emoji: zod.string().describe("A fun emoji that represents the story"),
 });
+
+/**
+ * Returns all saved stories ordered by newest first
+ * @summary Get all saved stories
+ */
+export const GetSavedStoriesResponseItem = zod.object({
+  id: zod.number(),
+  childName: zod.string(),
+  emoji: zod.string(),
+  title: zod.string(),
+  story: zod.string(),
+  interests: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const GetSavedStoriesResponse = zod.array(GetSavedStoriesResponseItem);
+
+/**
+ * Saves a generated story to the database
+ * @summary Save a story
+ */
+export const SaveStoryBody = zod.object({
+  childName: zod.string(),
+  emoji: zod.string(),
+  title: zod.string(),
+  story: zod.string(),
+  interests: zod.string().describe("Comma-separated interests"),
+});
+
+/**
+ * Deletes a saved story by ID
+ * @summary Delete a saved story
+ */
+export const DeleteSavedStoryParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteSavedStoryResponse = zod.object({
+  success: zod.boolean(),
+});

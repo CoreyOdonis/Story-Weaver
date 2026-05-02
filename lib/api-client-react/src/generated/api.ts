@@ -17,10 +17,13 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  DeleteResponse,
   ErrorResponse,
   GenerateStoryRequest,
   GenerateStoryResponse,
   HealthStatus,
+  SaveStoryRequest,
+  SavedStory,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -193,4 +196,252 @@ export const useGenerateStory = <
   TContext
 > => {
   return useMutation(getGenerateStoryMutationOptions(options));
+};
+
+/**
+ * Returns all saved stories ordered by newest first
+ * @summary Get all saved stories
+ */
+export const getGetSavedStoriesUrl = () => {
+  return `/api/saved-stories`;
+};
+
+export const getSavedStories = async (
+  options?: RequestInit,
+): Promise<SavedStory[]> => {
+  return customFetch<SavedStory[]>(getGetSavedStoriesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSavedStoriesQueryKey = () => {
+  return [`/api/saved-stories`] as const;
+};
+
+export const getGetSavedStoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSavedStories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSavedStories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSavedStoriesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSavedStories>>> = ({
+    signal,
+  }) => getSavedStories({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSavedStories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSavedStoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSavedStories>>
+>;
+export type GetSavedStoriesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all saved stories
+ */
+
+export function useGetSavedStories<
+  TData = Awaited<ReturnType<typeof getSavedStories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSavedStories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSavedStoriesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Saves a generated story to the database
+ * @summary Save a story
+ */
+export const getSaveStoryUrl = () => {
+  return `/api/saved-stories`;
+};
+
+export const saveStory = async (
+  saveStoryRequest: SaveStoryRequest,
+  options?: RequestInit,
+): Promise<SavedStory> => {
+  return customFetch<SavedStory>(getSaveStoryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(saveStoryRequest),
+  });
+};
+
+export const getSaveStoryMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveStory>>,
+    TError,
+    { data: BodyType<SaveStoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveStory>>,
+  TError,
+  { data: BodyType<SaveStoryRequest> },
+  TContext
+> => {
+  const mutationKey = ["saveStory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveStory>>,
+    { data: BodyType<SaveStoryRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveStory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveStoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveStory>>
+>;
+export type SaveStoryMutationBody = BodyType<SaveStoryRequest>;
+export type SaveStoryMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Save a story
+ */
+export const useSaveStory = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveStory>>,
+    TError,
+    { data: BodyType<SaveStoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveStory>>,
+  TError,
+  { data: BodyType<SaveStoryRequest> },
+  TContext
+> => {
+  return useMutation(getSaveStoryMutationOptions(options));
+};
+
+/**
+ * Deletes a saved story by ID
+ * @summary Delete a saved story
+ */
+export const getDeleteSavedStoryUrl = (id: number) => {
+  return `/api/saved-stories/${id}`;
+};
+
+export const deleteSavedStory = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteSavedStoryUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSavedStoryMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSavedStory>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSavedStory>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSavedStory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSavedStory>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSavedStory(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSavedStoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSavedStory>>
+>;
+
+export type DeleteSavedStoryMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a saved story
+ */
+export const useDeleteSavedStory = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSavedStory>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSavedStory>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteSavedStoryMutationOptions(options));
 };

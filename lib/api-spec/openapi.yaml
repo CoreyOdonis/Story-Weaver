@@ -11,7 +11,7 @@ tags:
   - name: health
     description: Health operations
   - name: stories
-    description: Story generation operations
+    description: Story generation and storage operations
 paths:
   /healthz:
     get:
@@ -47,6 +47,70 @@ paths:
                 $ref: "#/components/schemas/GenerateStoryResponse"
         "400":
           description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /saved-stories:
+    get:
+      operationId: getSavedStories
+      tags: [stories]
+      summary: Get all saved stories
+      description: Returns all saved stories ordered by newest first
+      responses:
+        "200":
+          description: List of saved stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedStory"
+    post:
+      operationId: saveStory
+      tags: [stories]
+      summary: Save a story
+      description: Saves a generated story to the database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveStoryRequest"
+      responses:
+        "201":
+          description: Story saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedStory"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /saved-stories/{id}:
+    delete:
+      operationId: deleteSavedStory
+      tags: [stories]
+      summary: Delete a saved story
+      description: Deletes a saved story by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Story deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "404":
+          description: Story not found
           content:
             application/json:
               schema:
@@ -97,6 +161,59 @@ components:
         - title
         - story
         - emoji
+    SaveStoryRequest:
+      type: object
+      properties:
+        childName:
+          type: string
+        emoji:
+          type: string
+        title:
+          type: string
+        story:
+          type: string
+        interests:
+          type: string
+          description: Comma-separated interests
+      required:
+        - childName
+        - emoji
+        - title
+        - story
+        - interests
+    SavedStory:
+      type: object
+      properties:
+        id:
+          type: integer
+        childName:
+          type: string
+        emoji:
+          type: string
+        title:
+          type: string
+        story:
+          type: string
+        interests:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - childName
+        - emoji
+        - title
+        - story
+        - interests
+        - createdAt
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
     ErrorResponse:
       type: object
       properties:

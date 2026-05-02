@@ -43,6 +43,29 @@ export interface GenerateStoryResponse {
   emoji: string;
 }
 
+export interface SaveStoryRequest {
+  childName: string;
+  emoji: string;
+  title: string;
+  story: string;
+  /** Comma-separated interests */
+  interests: string;
+}
+
+export interface SavedStory {
+  id: number;
+  childName: string;
+  emoji: string;
+  title: string;
+  story: string;
+  interests: string;
+  createdAt: string;
+}
+
+export interface DeleteResponse {
+  success: boolean;
+}
+
 export interface ErrorResponse {
   error: string;
 }
