@@ -14,3 +14,29 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Generates a personalized bedtime story based on child's name, age, and interests
+ * @summary Generate a bedtime story
+ */
+export const generateStoryBodyAgeMax = 12;
+
+export const GenerateStoryBody = zod.object({
+  childName: zod.string().describe("The child's name"),
+  age: zod
+    .number()
+    .min(1)
+    .max(generateStoryBodyAgeMax)
+    .describe("The child's age"),
+  interests: zod
+    .array(
+      zod.enum(["dinosaurs", "space", "princess", "animals", "cars", "magic"]),
+    )
+    .describe("The child's interests"),
+});
+
+export const GenerateStoryResponse = zod.object({
+  title: zod.string().describe("The story title"),
+  story: zod.string().describe("The full story text"),
+  emoji: zod.string().describe("A fun emoji that represents the story"),
+});

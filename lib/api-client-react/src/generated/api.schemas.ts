@@ -8,3 +8,41 @@
 export interface HealthStatus {
   status: string;
 }
+
+export type GenerateStoryRequestInterestsItem =
+  (typeof GenerateStoryRequestInterestsItem)[keyof typeof GenerateStoryRequestInterestsItem];
+
+export const GenerateStoryRequestInterestsItem = {
+  dinosaurs: "dinosaurs",
+  space: "space",
+  princess: "princess",
+  animals: "animals",
+  cars: "cars",
+  magic: "magic",
+} as const;
+
+export interface GenerateStoryRequest {
+  /** The child's name */
+  childName: string;
+  /**
+   * The child's age
+   * @minimum 1
+   * @maximum 12
+   */
+  age: number;
+  /** The child's interests */
+  interests: GenerateStoryRequestInterestsItem[];
+}
+
+export interface GenerateStoryResponse {
+  /** The story title */
+  title: string;
+  /** The full story text */
+  story: string;
+  /** A fun emoji that represents the story */
+  emoji: string;
+}
+
+export interface ErrorResponse {
+  error: string;
+}

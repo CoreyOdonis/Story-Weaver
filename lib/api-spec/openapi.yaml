@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: stories
+    description: Story generation operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /generate-story:
+    post:
+      operationId: generateStory
+      tags: [stories]
+      summary: Generate a bedtime story
+      description: Generates a personalized bedtime story based on child's name, age, and interests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateStoryRequest"
+      responses:
+        "200":
+          description: Story generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateStoryResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +60,47 @@ components:
           type: string
       required:
         - status
-
+    GenerateStoryRequest:
+      type: object
+      properties:
+        childName:
+          type: string
+          description: The child's name
+        age:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: The child's age
+        interests:
+          type: array
+          items:
+            type: string
+            enum: [dinosaurs, space, princess, animals, cars, magic]
+          description: The child's interests
+      required:
+        - childName
+        - age
+        - interests
+    GenerateStoryResponse:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The story title
+        story:
+          type: string
+          description: The full story text
+        emoji:
+          type: string
+          description: A fun emoji that represents the story
+      required:
+        - title
+        - story
+        - emoji
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

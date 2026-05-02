@@ -5,18 +5,26 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ErrorResponse,
+  GenerateStoryRequest,
+  GenerateStoryResponse,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +107,90 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Generates a personalized bedtime story based on child's name, age, and interests
+ * @summary Generate a bedtime story
+ */
+export const getGenerateStoryUrl = () => {
+  return `/api/generate-story`;
+};
+
+export const generateStory = async (
+  generateStoryRequest: GenerateStoryRequest,
+  options?: RequestInit,
+): Promise<GenerateStoryResponse> => {
+  return customFetch<GenerateStoryResponse>(getGenerateStoryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateStoryRequest),
+  });
+};
+
+export const getGenerateStoryMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateStory>>,
+    TError,
+    { data: BodyType<GenerateStoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateStory>>,
+  TError,
+  { data: BodyType<GenerateStoryRequest> },
+  TContext
+> => {
+  const mutationKey = ["generateStory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateStory>>,
+    { data: BodyType<GenerateStoryRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateStory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateStoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateStory>>
+>;
+export type GenerateStoryMutationBody = BodyType<GenerateStoryRequest>;
+export type GenerateStoryMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a bedtime story
+ */
+export const useGenerateStory = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateStory>>,
+    TError,
+    { data: BodyType<GenerateStoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateStory>>,
+  TError,
+  { data: BodyType<GenerateStoryRequest> },
+  TContext
+> => {
+  return useMutation(getGenerateStoryMutationOptions(options));
+};
