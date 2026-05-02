@@ -3,7 +3,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { Moon, Star, RefreshCw, BookMarked, Trash2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import {
+  Moon, Star, RefreshCw, BookMarked, Trash2,
+  ChevronDown, ChevronUp, Sparkles,
+  Play, Pause, Volume2, Loader2, VolumeX,
+} from "lucide-react";
 import {
   useGenerateStory,
   useGetSavedStories,
@@ -26,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useReadAloud } from "@/hooks/useReadAloud";
 
 const INTEREST_OPTIONS: { id: GenerateStoryRequestInterestsItem; label: string; icon: string }[] = [
   { id: "dinosaurs", label: "Dinosaurs", icon: "🦕" },
@@ -57,6 +62,128 @@ const STARS: { x: string; y: string; size: number; delay: number; duration: numb
   { x: "45%", y: "92%", size: 8,  delay: 0.6, duration: 3.0 },
   { x: "65%", y: "88%", size: 6,  delay: 1.9, duration: 2.4 },
 ];
+
+function formatTime(secs: number) {
+  if (!isFinite(secs) || isNaN(secs)) return "0:00";
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/* ── Read Aloud Player ── */
+function ReadAloudPlayer({ storyText }: { storyText: string }) {
+  const { state, currentTime, duration, progress, toggle, stop, errorMessage } = useReadAloud(storyText);
+
+  const isLoading = state === "loading";
+  const isPlaying = state === "playing";
+  const isError   = state === "error";
+  const isActive  = state === "playing" || state === "paused";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.85, duration: 0.5 }}
+      className="mt-8 mb-2"
+      data-testid="read-aloud-player"
+    >
+      <div className="rounded-2xl border border-white/10 bg-white/4 backdrop-blur-sm px-5 py-4">
+        <div className="flex items-center gap-4">
+          {/* Play / Pause button */}
+          <motion.button
+            whileHover={{ scale: isLoading ? 1 : 1.08 }}
+            whileTap={{ scale: isLoading ? 1 : 0.93 }}
+            onClick={toggle}
+            disabled={isLoading}
+            className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-lg
+              ${isError
+                ? "bg-destructive/20 border border-destructive/40 text-destructive"
+                : isPlaying
+                  ? "bg-primary text-primary-foreground shadow-[0_0_18px_hsl(262_72%_72%/0.45)]"
+                  : "bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30"
+              }`}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            data-testid="read-aloud-toggle"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : isError ? (
+              <VolumeX className="w-5 h-5" />
+            ) : isPlaying ? (
+              <Pause className="w-5 h-5 fill-current" />
+            ) : (
+              <Play className="w-5 h-5 fill-current translate-x-0.5" />
+            )}
+          </motion.button>
+
+          {/* Label + progress */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+                  {isLoading ? "Preparing audio…" : isError ? "Read Aloud" : isActive ? "Now Playing" : "Read Aloud"}
+                </span>
+              </div>
+              {isActive && (
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {formatTime(currentTime)}{duration > 0 ? ` / ${formatTime(duration)}` : ""}
+                </span>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
+                style={{ width: `${Math.round(progress * 100)}%` }}
+                transition={{ duration: 0.25, ease: "linear" }}
+              />
+            </div>
+
+            {isError && errorMessage && (
+              <p className="text-xs text-destructive mt-1.5">{errorMessage} Tap to retry.</p>
+            )}
+          </div>
+
+          {/* Stop button — only visible when active */}
+          <AnimatePresence>
+            {isActive && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={stop}
+                className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                aria-label="Stop"
+                data-testid="read-aloud-stop"
+              >
+                {/* Stop square icon */}
+                <span className="w-3 h-3 rounded-sm bg-current block" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Waveform bars — animated while playing */}
+        {isPlaying && (
+          <div className="flex items-end gap-[3px] justify-center mt-3 h-5" aria-hidden="true">
+            {[0.4, 0.7, 1, 0.6, 0.85, 0.5, 0.9, 0.65, 0.75, 0.45, 0.8, 0.55, 0.95].map((scale, i) => (
+              <motion.span
+                key={i}
+                className="w-1 rounded-full bg-primary/70"
+                animate={{ scaleY: [scale * 0.4, scale, scale * 0.5, scale * 0.8, scale * 0.3] }}
+                transition={{ duration: 0.8 + i * 0.07, repeat: Infinity, ease: "easeInOut", delay: i * 0.06 }}
+                style={{ height: "100%", originY: 1 }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 function LoadingDots() {
   return (
@@ -384,7 +511,8 @@ export default function Home() {
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-secondary opacity-90" />
 
                 <div className="p-8 sm:p-12">
-                  <div className="text-center mb-10">
+                  {/* Title & emoji */}
+                  <div className="text-center mb-8">
                     <motion.div initial={{ scale: 0, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", bounce: 0.45, delay: 0.2 }} className="text-8xl mb-5 leading-none" data-testid="text-story-emoji">
                       {generatedStory.emoji}
                     </motion.div>
@@ -398,7 +526,11 @@ export default function Home() {
                     </motion.div>
                   </div>
 
-                  <div className="space-y-5 mb-10" data-testid="text-story-content">
+                  {/* Read Aloud Player */}
+                  <ReadAloudPlayer storyText={generatedStory.story} />
+
+                  {/* Story text */}
+                  <div className="space-y-5 mt-8 mb-10" data-testid="text-story-content">
                     {paragraphs.map((para, i) => (
                       <motion.p key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.12, duration: 0.6 }} className="font-story text-lg sm:text-xl leading-[1.85] text-foreground/85 tracking-wide">
                         {para}
@@ -406,8 +538,8 @@ export default function Home() {
                     ))}
                   </div>
 
+                  {/* Action buttons */}
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9, duration: 0.5 }} className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-6 border-t border-white/10">
-                    {/* Save button */}
                     <motion.div whileHover={{ scale: savedThisSession ? 1 : 1.04 }} whileTap={{ scale: savedThisSession ? 1 : 0.96 }}>
                       <Button
                         onClick={handleSave}
@@ -421,7 +553,6 @@ export default function Home() {
                       </Button>
                     </motion.div>
 
-                    {/* New story button */}
                     <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
                       <Button variant="outline" size="lg" onClick={handleReset} className="rounded-full px-8 font-serif border-white/15 hover:border-primary/40 hover:bg-primary/10 transition-colors" data-testid="button-reset">
                         <RefreshCw className="w-4 h-4 mr-2" />
