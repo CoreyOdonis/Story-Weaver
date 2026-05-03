@@ -98,17 +98,19 @@ export default function Home() {
       <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.16)_0,rgba(255,255,255,0)_2px),radial-gradient(circle_at_70%_28%,rgba(255,255,255,0.14)_0,rgba(255,255,255,0)_1.5px),radial-gradient(circle_at_35%_65%,rgba(255,255,255,0.12)_0,rgba(255,255,255,0)_1.5px),radial-gradient(circle_at_82%_72%,rgba(255,255,255,0.15)_0,rgba(255,255,255,0)_2px)]" />
 
       <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {FLOATING_STARS.map((star, index) => (
-          <motion.div
-            key={index}
-            className="pointer-events-none absolute text-white/80"
-            style={{ top: star.top, left: star.left }}
-            animate={{ y: [0, -10, 0], opacity: [0.45, 1, 0.45] }}
-            transition={{ duration: star.duration, delay: star.delay, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Stars className="h-5 w-5" />
-          </motion.div>
-        ))}
+        <div className="pointer-events-none absolute inset-0">
+          {FLOATING_STARS.map((star, index) => (
+            <motion.div
+              key={index}
+              className="absolute text-white/80"
+              style={{ top: star.top, left: star.left }}
+              animate={{ y: [0, -10, 0], opacity: [0.45, 1, 0.45] }}
+              transition={{ duration: star.duration, delay: star.delay, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Stars className="h-5 w-5" />
+            </motion.div>
+          ))}
+        </div>
         <header className="flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <div className="rounded-full bg-white/10 p-2">
