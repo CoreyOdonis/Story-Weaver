@@ -1,267 +1,27 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
-  title: Api
-  version: 0.1.0
-  description: API specification
-servers:
-  - url: /api
-    description: Base API path
-tags:
-  - name: health
-    description: Health operations
-  - name: stories
-    description: Story generation and storage operations
-  - name: streak
-    description: Daily streak tracking
-  - name: voice
-    description: Voice cloning and custom narration
+  title: Dreamtime Stories API
+  version: 1.0.0
 paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
-      responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
   /generate-story:
     post:
-      operationId: generateStory
-      tags: [stories]
       summary: Generate a bedtime story
-      description: Generates a personalized bedtime story based on child's name, age, and interests
+      description: Generates a personalized bedtime story based on child's name, age, interests, and requested length
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/GenerateStoryRequest"
+              $ref: '#/components/schemas/GenerateStoryRequest'
       responses:
-        "200":
+        '200':
           description: Story generated successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenerateStoryResponse"
-        "400":
-          description: Invalid request body
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /saved-stories:
-    get:
-      operationId: getSavedStories
-      tags: [stories]
-      summary: Get all saved stories
-      description: Returns all saved stories ordered by newest first
-      responses:
-        "200":
-          description: List of saved stories
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SavedStory"
-    post:
-      operationId: saveStory
-      tags: [stories]
-      summary: Save a story
-      description: Saves a generated story to the database
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SaveStoryRequest"
-      responses:
-        "201":
-          description: Story saved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SavedStory"
-        "400":
-          description: Invalid request body
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /saved-stories/{id}:
-    delete:
-      operationId: deleteSavedStory
-      tags: [stories]
-      summary: Delete a saved story
-      description: Deletes a saved story by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Story deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DeleteResponse"
-        "404":
-          description: Story not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /streak:
-    get:
-      operationId: getStreak
-      tags: [streak]
-      summary: Get current streak
-      description: Returns the current streak for a given client ID
-      parameters:
-        - name: clientId
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Current streak data
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/StreakData"
-        "400":
-          description: Missing clientId
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /generate-illustrations:
-    post:
-      operationId: generateIllustrations
-      tags: [stories]
-      summary: Generate story illustrations
-      description: Generates soft watercolour illustrations for story scenes using AI image generation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GenerateIllustrationsRequest"
-      responses:
-        "200":
-          description: Generated illustrations as base64-encoded PNG strings
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenerateIllustrationsResponse"
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "502":
-          description: Image generation failed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /streak/activity:
-    post:
-      operationId: recordStreakActivity
-      tags: [streak]
-      summary: Record daily activity
-      description: Records activity for today and updates the streak counter
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StreakActivityRequest"
-      responses:
-        "200":
-          description: Updated streak result
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/StreakResult"
-        "400":
-          description: Missing clientId
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /voice/{clientId}:
-    get:
-      operationId: getVoiceProfile
-      tags: [voice]
-      summary: Get voice profile for a client
-      parameters:
-        - name: clientId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Voice profile found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/VoiceProfileResponse"
-        "404":
-          description: No voice profile found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-    delete:
-      operationId: deleteVoiceProfile
-      tags: [voice]
-      summary: Delete a voice profile
-      parameters:
-        - name: clientId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DeleteVoiceResponse"
-        "404":
-          description: No voice profile found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "502":
-          description: ElevenLabs deletion failed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/GenerateStoryResponse'
 components:
   schemas:
-    HealthStatus:
-      type: object
-      properties:
-        status:
-          type: string
-      required:
-        - status
     GenerateStoryRequest:
       type: object
       properties:
@@ -279,11 +39,11 @@ components:
             type: string
             enum: [dinosaurs, space, princess, animals, cars, magic]
           description: The child's interests
-        storyLength:
+        length:
           type: string
           enum: ["5min", "10min", "15min"]
           default: "5min"
-          description: Desired reading length of the story
+          description: Requested story length
       required:
         - childName
         - age
@@ -293,155 +53,11 @@ components:
       properties:
         title:
           type: string
-          description: The story title
         story:
           type: string
-          description: The full story text
         emoji:
           type: string
-          description: A fun emoji that represents the story
       required:
         - title
         - story
         - emoji
-    SaveStoryRequest:
-      type: object
-      properties:
-        childName:
-          type: string
-        emoji:
-          type: string
-        title:
-          type: string
-        story:
-          type: string
-        interests:
-          type: string
-          description: Comma-separated interests
-      required:
-        - childName
-        - emoji
-        - title
-        - story
-        - interests
-    SavedStory:
-      type: object
-      properties:
-        id:
-          type: integer
-        childName:
-          type: string
-        emoji:
-          type: string
-        title:
-          type: string
-        story:
-          type: string
-        interests:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - childName
-        - emoji
-        - title
-        - story
-        - interests
-        - createdAt
-    DeleteResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-      required:
-        - success
-    StreakData:
-      type: object
-      properties:
-        streakCount:
-          type: integer
-          description: Current streak count (0 if no activity yet)
-        lastActivityDate:
-          type: string
-          nullable: true
-          description: ISO date string of last activity (YYYY-MM-DD), or null
-      required:
-        - streakCount
-        - lastActivityDate
-    StreakActivityRequest:
-      type: object
-      properties:
-        clientId:
-          type: string
-      required:
-        - clientId
-    StreakResult:
-      type: object
-      properties:
-        streakCount:
-          type: integer
-          description: New streak count after recording activity
-        increased:
-          type: boolean
-          description: Whether the streak increased compared to the previous value
-      required:
-        - streakCount
-        - increased
-    GenerateIllustrationsRequest:
-      type: object
-      properties:
-        story:
-          type: string
-          description: Full story text
-        title:
-          type: string
-          description: Story title
-        childName:
-          type: string
-          description: Child's name
-        emoji:
-          type: string
-          description: Story emoji
-      required:
-        - story
-        - title
-        - childName
-        - emoji
-    GenerateIllustrationsResponse:
-      type: object
-      properties:
-        images:
-          type: array
-          items:
-            type: string
-          description: Base64-encoded PNG image data for each illustrated scene
-      required:
-        - images
-    VoiceProfileResponse:
-      type: object
-      properties:
-        voiceId:
-          type: string
-          description: ElevenLabs voice ID
-        voiceName:
-          type: string
-          description: Display name for the cloned voice
-      required:
-        - voiceId
-        - voiceName
-    DeleteVoiceResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-      required:
-        - success
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-      required:
-        - error
