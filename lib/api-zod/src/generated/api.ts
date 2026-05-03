@@ -64,6 +64,14 @@ export const GetSavedStoriesResponseItem = zod.object({
     .number()
     .nullish()
     .describe("ID of the child profile this story is linked to"),
+  seriesId: zod
+    .number()
+    .nullish()
+    .describe("ID of the series this story belongs to"),
+  episodeNumber: zod
+    .number()
+    .nullish()
+    .describe("Episode number within the series"),
 });
 export const GetSavedStoriesResponse = zod.array(GetSavedStoriesResponseItem);
 
@@ -81,6 +89,14 @@ export const PostSavedStoriesBody = zod.object({
     .number()
     .optional()
     .describe("ID of the child profile to link this story to"),
+  seriesId: zod
+    .number()
+    .optional()
+    .describe("ID of the series this story belongs to"),
+  episodeNumber: zod
+    .number()
+    .optional()
+    .describe("Episode number within the series"),
 });
 
 /**
@@ -145,6 +161,75 @@ export const PostGenerateIllustrationsResponse = zod.object({
   images: zod
     .array(zod.string())
     .describe("Base64-encoded PNG image data for each illustrated scene"),
+});
+
+/**
+ * @summary Get all series for a child
+ */
+export const GetSeriesQueryParams = zod.object({
+  childId: zod.coerce.number(),
+});
+
+export const GetSeriesResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  childId: zod.number(),
+  title: zod.string(),
+  theme: zod.string().nullish(),
+  storyCount: zod
+    .number()
+    .optional()
+    .describe("Number of stories in this series"),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const GetSeriesResponse = zod.array(GetSeriesResponseItem);
+
+/**
+ * @summary Create a new series
+ */
+export const PostSeriesBody = zod.object({
+  childId: zod.number(),
+  title: zod.string(),
+  theme: zod.string().optional(),
+});
+
+/**
+ * @summary Update a series
+ */
+export const PutSeriesIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PutSeriesIdBody = zod.object({
+  childId: zod.number(),
+  title: zod.string(),
+  theme: zod.string().optional(),
+});
+
+export const PutSeriesIdResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  childId: zod.number(),
+  title: zod.string(),
+  theme: zod.string().nullish(),
+  storyCount: zod
+    .number()
+    .optional()
+    .describe("Number of stories in this series"),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a series
+ */
+export const DeleteSeriesIdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteSeriesIdResponse = zod.object({
+  success: zod.boolean(),
 });
 
 /**

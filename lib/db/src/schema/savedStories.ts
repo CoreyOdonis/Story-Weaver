@@ -6,6 +6,8 @@ export const savedStoriesTable = pgTable("saved_stories", {
   id: serial("id").primaryKey(),
   userId: text("user_id"),
   childId: integer("child_id"),
+  seriesId: integer("series_id"),
+  episodeNumber: integer("episode_number"),
   childName: text("child_name").notNull(),
   emoji: text("emoji").notNull(),
   title: text("title").notNull(),

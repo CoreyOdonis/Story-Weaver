@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./createSeriesRequest";
 export * from "./deleteResponse";
 export * from "./deleteVoiceParams";
 export * from "./deleteVoiceResponse";
@@ -16,11 +17,13 @@ export * from "./generateStoryRequestInterestsItem";
 export * from "./generateStoryRequestStoryLength";
 export * from "./generateStoryRequestTone";
 export * from "./generateStoryResponse";
+export * from "./getSeriesParams";
 export * from "./getStreakParams";
 export * from "./getVoiceParams";
 export * from "./healthStatus";
 export * from "./savedStory";
 export * from "./saveStoryRequest";
+export * from "./storySeries";
 export * from "./streakActivityRequest";
 export * from "./streakData";
 export * from "./streakResult";

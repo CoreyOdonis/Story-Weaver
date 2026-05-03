@@ -142,6 +142,78 @@ paths:
               schema:
                 $ref: '#/components/schemas/GenerateIllustrationsResponse'
 
+  /series:
+    get:
+      summary: Get all series for a child
+      parameters:
+        - name: childId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of series
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorySeries'
+    post:
+      summary: Create a new series
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSeriesRequest'
+      responses:
+        '201':
+          description: Series created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorySeries'
+
+  /series/{id}:
+    put:
+      summary: Update a series
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSeriesRequest'
+      responses:
+        '200':
+          description: Series updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorySeries'
+    delete:
+      summary: Delete a series
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+
   /voice:
     get:
       summary: Get voice profile for a client
@@ -242,6 +314,12 @@ components:
         childId:
           type: integer
           description: ID of the child profile to link this story to
+        seriesId:
+          type: integer
+          description: ID of the series this story belongs to
+        episodeNumber:
+          type: integer
+          description: Episode number within the series
 
     SavedStory:
       type: object
@@ -265,6 +343,48 @@ components:
           type: integer
           nullable: true
           description: ID of the child profile this story is linked to
+        seriesId:
+          type: integer
+          nullable: true
+          description: ID of the series this story belongs to
+        episodeNumber:
+          type: integer
+          nullable: true
+          description: Episode number within the series
+
+    StorySeries:
+      type: object
+      required: [id, userId, childId, title, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        childId:
+          type: integer
+        title:
+          type: string
+        theme:
+          type: string
+          nullable: true
+        storyCount:
+          type: integer
+          description: Number of stories in this series
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    CreateSeriesRequest:
+      type: object
+      required: [childId, title]
+      properties:
+        childId:
+          type: integer
+        title:
+          type: string
+        theme:
+          type: string
 
     DeleteResponse:
       type: object

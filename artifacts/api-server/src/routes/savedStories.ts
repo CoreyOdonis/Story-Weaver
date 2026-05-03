@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, savedStoriesTable } from "@workspace/db";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, isNull, or } from "drizzle-orm";
 import { optionalAuth } from "../middleware/optionalAuth";
 import type { AuthRequest } from "../middleware/requireAuth";
 
@@ -33,13 +33,15 @@ router.get("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
 });
 
 router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
-  const { childName, emoji, title, story, interests, childId } = req.body as {
+  const { childName, emoji, title, story, interests, childId, seriesId, episodeNumber } = req.body as {
     childName?: string;
     emoji?: string;
     title?: string;
     story?: string;
     interests?: string;
     childId?: number;
+    seriesId?: number;
+    episodeNumber?: number;
   };
 
   if (!childName || !emoji || !title || !story || !interests) {
@@ -48,11 +50,22 @@ router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
   }
 
   try {
+    let computedEpisodeNumber: number | null = episodeNumber ?? null;
+    if (seriesId && computedEpisodeNumber === null) {
+      const [{ cnt }] = await db
+        .select({ cnt: count() })
+        .from(savedStoriesTable)
+        .where(eq(savedStoriesTable.seriesId, seriesId));
+      computedEpisodeNumber = (cnt ?? 0) + 1;
+    }
+
     const [saved] = await db
       .insert(savedStoriesTable)
       .values({
         userId: req.firebaseUid ?? null,
         childId: childId ?? null,
+        seriesId: seriesId ?? null,
+        episodeNumber: computedEpisodeNumber,
         childName,
         emoji,
         title,

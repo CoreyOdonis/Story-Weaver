@@ -14,4 +14,8 @@ export interface SaveStoryRequest {
   interests: string;
   /** ID of the child profile to link this story to */
   childId?: number;
+  /** ID of the series this story belongs to */
+  seriesId?: number;
+  /** Episode number within the series */
+  episodeNumber?: number;
 }

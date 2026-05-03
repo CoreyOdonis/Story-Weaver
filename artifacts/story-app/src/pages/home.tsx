@@ -38,6 +38,9 @@ import { usePreferences } from "@/hooks/usePreferences";
 import { useChildren } from "@/hooks/useChildren";
 import type { ChildProfile } from "@/hooks/useChildren";
 import { ChildProfileBar } from "@/components/ChildProfileBar";
+import { useSeries } from "@/hooks/useSeries";
+import type { StorySeries } from "@/hooks/useSeries";
+import { SeriesPicker } from "@/components/SeriesPicker";
 
 const WORDS_PER_MINUTE = 180;
 
@@ -67,10 +70,13 @@ export default function Home() {
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
   const [selectedChild, setSelectedChild] = useState<ChildProfile | null>(null);
   const [selectedTone, setSelectedTone] = useState<GenerateStoryRequestTone | null>(null);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
+  const [selectedSeries, setSelectedSeries] = useState<StorySeries | null>(null);
 
   const { firebaseUser, profile, loading: authLoading, signInWithGoogle, signOut } = useAuth();
   const { preferences, savePreferences } = usePreferences();
   const { children, createChild, updateChild, deleteChild } = useChildren();
+  const { series, createSeries, updateSeries, deleteSeries } = useSeries(selectedChildId);
   const [prefsApplied, setPrefsApplied] = useState(false);
 
   const queryClient = useQueryClient();
@@ -104,11 +110,15 @@ export default function Home() {
       setSelectedChildId(null);
       setSelectedChild(null);
       setSelectedTone(null);
+      setSelectedSeriesId(null);
+      setSelectedSeries(null);
     }
   }, [firebaseUser]);
 
   const handleSelectChild = (child: ChildProfile | null) => {
     setSelectedChild(child);
+    setSelectedSeriesId(null);
+    setSelectedSeries(null);
     if (!child) {
       setSelectedChildId(null);
       setSelectedTone(null);
@@ -122,6 +132,11 @@ export default function Home() {
       interests: child.interests,
       length: child.defaultStoryLength ?? "5min",
     });
+  };
+
+  const handleSelectSeries = (s: StorySeries | null) => {
+    setSelectedSeries(s);
+    setSelectedSeriesId(s?.id ?? null);
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -164,6 +179,8 @@ export default function Home() {
     setSelectedChildId(null);
     setSelectedChild(null);
     setSelectedTone(null);
+    setSelectedSeriesId(null);
+    setSelectedSeries(null);
   };
 
   const paragraphs = generatedStory?.story.split(/\n\n+/).map((p) => p.trim()).filter(Boolean) ?? [];
@@ -310,6 +327,18 @@ export default function Home() {
                   </div>
                 )}
 
+                {selectedChildId && firebaseUser && (
+                  <SeriesPicker
+                    childId={selectedChildId}
+                    series={series}
+                    selectedSeriesId={selectedSeriesId}
+                    onSelect={handleSelectSeries}
+                    onCreate={async (data) => { await createSeries(data); }}
+                    onUpdate={async (id, data) => { await updateSeries(id, data); }}
+                    onDelete={async (id) => { await deleteSeries(id); }}
+                  />
+                )}
+
                 <div className="pt-2">
                   <motion.div whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
                     <Button type="submit" size="lg" className="btn-shimmer w-full h-14 text-lg font-serif rounded-2xl text-white border-0 shadow-[0_0_28px_hsl(262_72%_72%/0.4)]" disabled={generateStoryMutation.isPending || !selectedChild}>
@@ -360,6 +389,7 @@ export default function Home() {
                             story: generatedStory.story,
                             interests: pendingInterests,
                             childId: selectedChildId,
+                            ...(selectedSeriesId ? { seriesId: selectedSeriesId } : {}),
                           },
                         },
                         {

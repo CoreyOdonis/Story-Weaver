@@ -18,4 +18,14 @@ export interface SavedStory {
    * @nullable
    */
   childId?: number | null;
+  /**
+   * ID of the series this story belongs to
+   * @nullable
+   */
+  seriesId?: number | null;
+  /**
+   * Episode number within the series
+   * @nullable
+   */
+  episodeNumber?: number | null;
 }

@@ -16,6 +16,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  CreateSeriesRequest,
   DeleteResponse,
   DeleteVoiceParams,
   DeleteVoiceResponse,
@@ -24,11 +25,13 @@ import type {
   GenerateIllustrationsResponse,
   GenerateStoryRequest,
   GenerateStoryResponse,
+  GetSeriesParams,
   GetStreakParams,
   GetVoiceParams,
   HealthStatus,
   SaveStoryRequest,
   SavedStory,
+  StorySeries,
   StreakActivityRequest,
   StreakData,
   StreakResult,
@@ -726,6 +729,357 @@ export const usePostGenerateIllustrations = <
   TContext
 > => {
   return useMutation(getPostGenerateIllustrationsMutationOptions(options));
+};
+
+/**
+ * @summary Get all series for a child
+ */
+export const getGetSeriesUrl = (params: GetSeriesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/series?${stringifiedParams}`
+    : `/api/series`;
+};
+
+export const getSeries = async (
+  params: GetSeriesParams,
+  options?: RequestInit,
+): Promise<StorySeries[]> => {
+  return customFetch<StorySeries[]>(getGetSeriesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSeriesQueryKey = (params?: GetSeriesParams) => {
+  return [`/api/series`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetSeriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSeries>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetSeriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSeries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSeriesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSeries>>> = ({
+    signal,
+  }) => getSeries(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSeries>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSeriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSeries>>
+>;
+export type GetSeriesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all series for a child
+ */
+
+export function useGetSeries<
+  TData = Awaited<ReturnType<typeof getSeries>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetSeriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSeries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSeriesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new series
+ */
+export const getPostSeriesUrl = () => {
+  return `/api/series`;
+};
+
+export const postSeries = async (
+  createSeriesRequest: CreateSeriesRequest,
+  options?: RequestInit,
+): Promise<StorySeries> => {
+  return customFetch<StorySeries>(getPostSeriesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSeriesRequest),
+  });
+};
+
+export const getPostSeriesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postSeries>>,
+    TError,
+    { data: BodyType<CreateSeriesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postSeries>>,
+  TError,
+  { data: BodyType<CreateSeriesRequest> },
+  TContext
+> => {
+  const mutationKey = ["postSeries"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postSeries>>,
+    { data: BodyType<CreateSeriesRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postSeries(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostSeriesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postSeries>>
+>;
+export type PostSeriesMutationBody = BodyType<CreateSeriesRequest>;
+export type PostSeriesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new series
+ */
+export const usePostSeries = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postSeries>>,
+    TError,
+    { data: BodyType<CreateSeriesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postSeries>>,
+  TError,
+  { data: BodyType<CreateSeriesRequest> },
+  TContext
+> => {
+  return useMutation(getPostSeriesMutationOptions(options));
+};
+
+/**
+ * @summary Update a series
+ */
+export const getPutSeriesIdUrl = (id: number) => {
+  return `/api/series/${id}`;
+};
+
+export const putSeriesId = async (
+  id: number,
+  createSeriesRequest: CreateSeriesRequest,
+  options?: RequestInit,
+): Promise<StorySeries> => {
+  return customFetch<StorySeries>(getPutSeriesIdUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSeriesRequest),
+  });
+};
+
+export const getPutSeriesIdMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putSeriesId>>,
+    TError,
+    { id: number; data: BodyType<CreateSeriesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putSeriesId>>,
+  TError,
+  { id: number; data: BodyType<CreateSeriesRequest> },
+  TContext
+> => {
+  const mutationKey = ["putSeriesId"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putSeriesId>>,
+    { id: number; data: BodyType<CreateSeriesRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return putSeriesId(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutSeriesIdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putSeriesId>>
+>;
+export type PutSeriesIdMutationBody = BodyType<CreateSeriesRequest>;
+export type PutSeriesIdMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a series
+ */
+export const usePutSeriesId = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putSeriesId>>,
+    TError,
+    { id: number; data: BodyType<CreateSeriesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof putSeriesId>>,
+  TError,
+  { id: number; data: BodyType<CreateSeriesRequest> },
+  TContext
+> => {
+  return useMutation(getPutSeriesIdMutationOptions(options));
+};
+
+/**
+ * @summary Delete a series
+ */
+export const getDeleteSeriesIdUrl = (id: number) => {
+  return `/api/series/${id}`;
+};
+
+export const deleteSeriesId = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteSeriesIdUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSeriesIdMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSeriesId>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSeriesId>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSeriesId"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSeriesId>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSeriesId(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSeriesIdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSeriesId>>
+>;
+
+export type DeleteSeriesIdMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a series
+ */
+export const useDeleteSeriesId = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSeriesId>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSeriesId>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteSeriesIdMutationOptions(options));
 };
 
 /**

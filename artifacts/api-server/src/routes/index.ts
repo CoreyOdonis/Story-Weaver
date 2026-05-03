@@ -9,6 +9,7 @@ import voiceRouter from "./voice";
 import authRouter from "./auth";
 import preferencesRouter from "./preferences";
 import childrenRouter from "./children";
+import seriesRouter from "./series";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(streakRouter);
 router.use(illustrationsRouter);
 router.use(voiceRouter);
 router.use(childrenRouter);
+router.use(seriesRouter);
 
 export default router;

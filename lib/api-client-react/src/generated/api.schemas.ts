@@ -81,6 +81,10 @@ export interface SaveStoryRequest {
   interests: string;
   /** ID of the child profile to link this story to */
   childId?: number;
+  /** ID of the series this story belongs to */
+  seriesId?: number;
+  /** Episode number within the series */
+  episodeNumber?: number;
 }
 
 export interface SavedStory {
@@ -96,6 +100,35 @@ export interface SavedStory {
    * @nullable
    */
   childId?: number | null;
+  /**
+   * ID of the series this story belongs to
+   * @nullable
+   */
+  seriesId?: number | null;
+  /**
+   * Episode number within the series
+   * @nullable
+   */
+  episodeNumber?: number | null;
+}
+
+export interface StorySeries {
+  id: number;
+  userId: string;
+  childId: number;
+  title: string;
+  /** @nullable */
+  theme?: string | null;
+  /** Number of stories in this series */
+  storyCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSeriesRequest {
+  childId: number;
+  title: string;
+  theme?: string;
 }
 
 export interface DeleteResponse {
@@ -156,6 +189,10 @@ export interface ErrorResponse {
 
 export type GetStreakParams = {
   clientId: string;
+};
+
+export type GetSeriesParams = {
+  childId: number;
 };
 
 export type GetVoiceParams = {
