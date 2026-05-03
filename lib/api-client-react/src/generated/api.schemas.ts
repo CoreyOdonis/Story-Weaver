@@ -70,6 +70,8 @@ export interface GenerateStoryResponse {
   story: string;
   /** A fun emoji that represents the story */
   emoji: string;
+  /** Short 3-5 sentence summary of the story */
+  summary: string;
 }
 
 export interface SaveStoryRequest {
@@ -77,6 +79,8 @@ export interface SaveStoryRequest {
   emoji: string;
   title: string;
   story: string;
+  /** Short 3-5 sentence summary of the story */
+  summary?: string;
   /** Comma-separated interests */
   interests: string;
   /** ID of the child profile to link this story to */
@@ -93,6 +97,11 @@ export interface SavedStory {
   emoji: string;
   title: string;
   story: string;
+  /**
+   * Short 3-5 sentence summary of the story
+   * @nullable
+   */
+  summary?: string | null;
   interests: string;
   createdAt: string;
   /**

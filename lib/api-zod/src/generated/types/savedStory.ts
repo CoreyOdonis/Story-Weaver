@@ -11,6 +11,11 @@ export interface SavedStory {
   emoji: string;
   title: string;
   story: string;
+  /**
+   * Short 3-5 sentence summary of the story
+   * @nullable
+   */
+  summary?: string | null;
   interests: string;
   createdAt: string;
   /**

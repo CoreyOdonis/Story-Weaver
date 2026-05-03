@@ -39,6 +39,17 @@ function summarizeStory(story: string): string {
   return cleaned.length > 700 ? `${cleaned.slice(0, 700).trim()}…` : cleaned;
 }
 
+function extractSummaryFromJson(raw: string): string | null {
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]) as { summary?: string };
+    return parsed.summary?.trim() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function generateStoryJson(systemPrompt: string, userPrompt: string, interests: string[]) {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -67,6 +78,32 @@ async function generateStoryJson(systemPrompt: string, userPrompt: string, inter
     story: parsed.story,
     emoji: parsed.emoji || pickEmoji(interests),
   } as const;
+}
+
+async function generateStorySummary(title: string, story: string, childName: string, interests: string[]) {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    max_completion_tokens: 512,
+    messages: [
+      {
+        role: "system",
+        content: [
+          "Write a short 3-5 sentence summary of the bedtime story.",
+          "Capture the key characters, setting, and important events.",
+          "Keep it concise for use as context in the next episode.",
+          'Respond ONLY with valid JSON in this exact format: {"summary": "..."}',
+        ].join(" "),
+      },
+      {
+        role: "user",
+        content: `Title: ${title}\nChild: ${childName}\nInterests: ${interests.join(", ")}\nStory: ${summarizeStory(story)}`,
+      },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? "";
+  const summaryFromJson = extractSummaryFromJson(raw);
+  return summaryFromJson ?? summarizeStory(story).split(/(?<=[.!?])\s+/).slice(0, 5).join(" ");
 }
 
 router.post("/generate-story", async (req, res) => {
@@ -102,7 +139,8 @@ router.post("/generate-story", async (req, res) => {
       res.status(500).json({ error: result.error });
       return;
     }
-    res.json(result);
+    const summary = await generateStorySummary(result.title, result.story, childName, interests);
+    res.json({ ...result, summary });
   } catch (err) {
     req.log.error({ err }, "OpenAI API error");
     res.status(502).json({ error: "Could not reach the story magic right now — please try again!" });
@@ -137,7 +175,7 @@ router.post("/continue-story", async (req, res) => {
       return;
     }
 
-    const previousSummary = summarizeStory(lastStory.story);
+    const previousSummary = lastStory.storySummary?.trim() || summarizeStory(lastStory.story);
     const interestsList = body.interests.join(", ");
     const wordCount = LENGTH_MAP[body.storyLength ?? "5min"] ?? LENGTH_MAP["5min"];
     const toneDesc = body.tone && body.tone in toneDescriptions ? toneDescriptions[body.tone] : "gentle and soothing";
@@ -145,25 +183,52 @@ router.post("/continue-story", async (req, res) => {
     const systemPrompt = [
       `Write the next episode in a ${toneDesc} bedtime story series for a ${body.age}-year-old child named ${body.childName}.`,
       "Maintain the same characters, setting, and overall feel from the previous episode.",
-      `Previous episode summary: ${previousSummary}`,
+      `Use this summary of the previous episode as context: ${previousSummary}`,
       `Include their interests: ${interestsList}.`,
       `The new episode should be approximately ${wordCount} words long.`,
       "Continue the narrative naturally from the previous episode.",
       "End with a soft bedtime conclusion that feels calm and satisfying.",
-      'Respond ONLY with a valid JSON object in this exact format: {"title": "...", "story": "...", "emoji": "..."}',
+      'Respond ONLY with a valid JSON object in this exact format: {"title": "...", "story": "...", "emoji": "...", "summary": "..."}',
       "Do not include any text outside the JSON.",
     ].join(" ");
 
-    const result = await generateStoryJson(
-      systemPrompt,
-      `Continue the story for ${body.childName}.`,
-      body.interests
-    );
-    if ("error" in result) {
-      res.status(500).json({ error: result.error });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_completion_tokens: 8192,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: `Continue the story for ${body.childName}.`,
+        },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "";
+    let parsed: { title?: string; story?: string; emoji?: string; summary?: string };
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(jsonMatch?.[0] ?? raw) as typeof parsed;
+    } catch {
+      req.log.error({ raw }, "Failed to parse OpenAI JSON response");
+      res.status(500).json({ error: "Story generation failed — please try again." });
       return;
     }
-    res.json(result);
+
+    if (!parsed.title || !parsed.story || !parsed.emoji) {
+      req.log.error({ parsed }, "OpenAI response missing required fields");
+      res.status(500).json({ error: "Story generation failed — please try again." });
+      return;
+    }
+
+    const summary = parsed.summary?.trim() || (await generateStorySummary(parsed.title, parsed.story, body.childName, body.interests));
+
+    res.json({
+      title: parsed.title,
+      story: parsed.story,
+      emoji: parsed.emoji || pickEmoji(body.interests),
+      summary,
+    });
   } catch (err) {
     req.log.error({ err }, "OpenAI API error");
     res.status(502).json({ error: "Could not reach the story magic right now — please try again!" });

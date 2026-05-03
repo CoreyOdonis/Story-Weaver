@@ -33,11 +33,12 @@ router.get("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
 });
 
 router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
-  const { childName, emoji, title, story, interests, childId, seriesId, episodeNumber } = req.body as {
+  const { childName, emoji, title, story, storySummary, interests, childId, seriesId, episodeNumber } = req.body as {
     childName?: string;
     emoji?: string;
     title?: string;
     story?: string;
+    storySummary?: string;
     interests?: string;
     childId?: number;
     seriesId?: number;
@@ -73,7 +74,11 @@ router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
         interests,
       })
       .returning();
-    res.status(201).json(saved);
+
+    res.status(201).json({
+      ...saved,
+      storySummary: storySummary ?? null,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to save story");
     res.status(500).json({ error: "Could not save story." });

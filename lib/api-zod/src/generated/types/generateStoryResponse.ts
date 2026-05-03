@@ -12,4 +12,6 @@ export interface GenerateStoryResponse {
   story: string;
   /** A fun emoji that represents the story */
   emoji: string;
+  /** Short 3-5 sentence summary of the story */
+  summary: string;
 }

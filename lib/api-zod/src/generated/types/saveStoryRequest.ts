@@ -10,6 +10,8 @@ export interface SaveStoryRequest {
   emoji: string;
   title: string;
   story: string;
+  /** Short 3-5 sentence summary of the story */
+  summary?: string;
   /** Comma-separated interests */
   interests: string;
   /** ID of the child profile to link this story to */

@@ -46,6 +46,7 @@ export const PostGenerateStoryResponse = zod.object({
   title: zod.string().describe("The story title"),
   story: zod.string().describe("The full story text"),
   emoji: zod.string().describe("A fun emoji that represents the story"),
+  summary: zod.string().describe("Short 3-5 sentence summary of the story"),
 });
 
 /**
@@ -58,6 +59,10 @@ export const GetSavedStoriesResponseItem = zod.object({
   emoji: zod.string(),
   title: zod.string(),
   story: zod.string(),
+  summary: zod
+    .string()
+    .nullish()
+    .describe("Short 3-5 sentence summary of the story"),
   interests: zod.string(),
   createdAt: zod.string(),
   childId: zod
@@ -84,6 +89,10 @@ export const PostSavedStoriesBody = zod.object({
   emoji: zod.string(),
   title: zod.string(),
   story: zod.string(),
+  summary: zod
+    .string()
+    .optional()
+    .describe("Short 3-5 sentence summary of the story"),
   interests: zod.string().describe("Comma-separated interests"),
   childId: zod
     .number()
