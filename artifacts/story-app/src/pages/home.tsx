@@ -33,8 +33,10 @@ import { ContinueStoryButton } from "@/components/ContinueStoryButton";
 import { useMemory } from "@/hooks/useMemory";
 import { StoryMemoryPanel } from "@/components/StoryMemoryPanel";
 import { auth } from "@/lib/firebase";
+import { ContinueYesterdayButton } from "@/components/ContinueYesterdayButton";
 
 const WORDS_PER_MINUTE = 180;
+const LAST_ACTIVE_KEY = "dreamtime_last_active_story";
 
 const STORY_LENGTHS = [
   { value: "5min", label: "5 min", sublabel: "Quick tale" },
@@ -55,6 +57,34 @@ async function getToken(): Promise<string | null> {
   return user.getIdToken().catch(() => null);
 }
 
+function loadLastActive() {
+  try {
+    const raw = localStorage.getItem(LAST_ACTIVE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as {
+      childId: number;
+      childName: string;
+      seriesId: number | null;
+      seriesTitle: string | null;
+      storyTitle: string;
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveLastActive(value: {
+  childId: number;
+  childName: string;
+  seriesId: number | null;
+  seriesTitle: string | null;
+  storyTitle: string;
+}) {
+  try {
+    localStorage.setItem(LAST_ACTIVE_KEY, JSON.stringify(value));
+  } catch {}
+}
+
 export default function Home() {
   const [savedThisSession, setSavedThisSession] = useState(false);
   const [generatedStory, setGeneratedStory] = useState<{
@@ -72,6 +102,7 @@ export default function Home() {
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
   const [selectedSeries, setSelectedSeries] = useState<StorySeries | null>(null);
   const [continueLoading, setContinueLoading] = useState(false);
+  const [lastActive, setLastActive] = useState<ReturnType<typeof loadLastActive>>(null);
 
   const { firebaseUser, profile, loading: authLoading, signInWithGoogle, signOut } = useAuth();
   const { preferences, savePreferences } = usePreferences();
@@ -96,6 +127,10 @@ export default function Home() {
   });
 
   useEffect(() => {
+    setLastActive(loadLastActive());
+  }, []);
+
+  useEffect(() => {
     if (!preferences || prefsApplied || selectedChildId) return;
     const patch: Partial<z.infer<typeof formSchema>> = {};
     if (preferences.childName) patch.childName = preferences.childName;
@@ -116,6 +151,24 @@ export default function Home() {
       setSelectedSeries(null);
     }
   }, [firebaseUser]);
+
+  useEffect(() => {
+    if (!selectedChildId || !selectedSeriesId || !selectedChild || !selectedSeries) return;
+    saveLastActive({
+      childId: selectedChildId,
+      childName: selectedChild.name,
+      seriesId: selectedSeriesId,
+      seriesTitle: selectedSeries.title,
+      storyTitle: selectedSeries.title,
+    });
+    setLastActive({
+      childId: selectedChildId,
+      childName: selectedChild.name,
+      seriesId: selectedSeriesId,
+      seriesTitle: selectedSeries.title,
+      storyTitle: selectedSeries.title,
+    });
+  }, [selectedChildId, selectedChild, selectedSeriesId, selectedSeries]);
 
   const handleSelectChild = (child: ChildProfile | null) => {
     setSelectedChild(child);
@@ -139,6 +192,22 @@ export default function Home() {
   const handleSelectSeries = (s: StorySeries | null) => {
     setSelectedSeries(s);
     setSelectedSeriesId(s?.id ?? null);
+  };
+
+  const runContinue = async (targetChildId?: number, targetSeriesId?: number | null) => {
+    const childId = targetChildId ?? selectedChildId;
+    const seriesId = targetSeriesId ?? selectedSeriesId;
+    if (!childId || !seriesId) return;
+    const child = children.find((c) => c.id === childId) ?? selectedChild;
+    const seriesItem = series.find((s) => s.id === seriesId) ?? selectedSeries;
+    if (!child || !seriesItem) return;
+    setSelectedChild(child);
+    setSelectedSeries(seriesItem);
+    setSelectedChildId(child.id);
+    setSelectedSeriesId(seriesItem.id);
+    setSelectedTone((child.tone as GenerateStoryRequestTone) ?? null);
+    form.reset({ childName: child.name, age: child.age ?? 5, interests: child.interests, length: child.defaultStoryLength ?? "5min" });
+    await handleContinueStory();
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -168,6 +237,20 @@ export default function Home() {
           });
           recordActivity();
           void refreshMemory();
+          saveLastActive({
+            childId: selectedChild.id,
+            childName: selectedChild.name,
+            seriesId: selectedSeriesId,
+            seriesTitle: selectedSeries?.title ?? null,
+            storyTitle: result.title,
+          });
+          setLastActive({
+            childId: selectedChild.id,
+            childName: selectedChild.name,
+            seriesId: selectedSeriesId,
+            seriesTitle: selectedSeries?.title ?? null,
+            storyTitle: result.title,
+          });
           if (firebaseUser) {
             void savePreferences({
               childName: selectedChild.name,
@@ -211,6 +294,20 @@ export default function Home() {
       setPendingInterests(selectedChild.interests.join(", "));
       recordActivity();
       void refreshMemory();
+      saveLastActive({
+        childId: selectedChild.id,
+        childName: selectedChild.name,
+        seriesId: selectedSeries.id,
+        seriesTitle: selectedSeries.title,
+        storyTitle: result.title,
+      });
+      setLastActive({
+        childId: selectedChild.id,
+        childName: selectedChild.name,
+        seriesId: selectedSeries.id,
+        seriesTitle: selectedSeries.title,
+        storyTitle: result.title,
+      });
     } finally {
       setContinueLoading(false);
     }
@@ -270,26 +367,20 @@ export default function Home() {
             </Button>
           </div>
         ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full border-white/20 bg-white/5 hover:bg-white/10 text-sm h-9 px-4 gap-2"
-            onClick={signInWithGoogle}
-          >
+          <Button variant="outline" size="sm" className="rounded-full border-white/20 bg-white/5 hover:bg-white/10 text-sm h-9 px-4 gap-2" onClick={signInWithGoogle}>
             Continue with Google
           </Button>
         )}
       </div>
 
+      {lastActive && firebaseUser && (
+        <div className="relative z-10 w-full max-w-4xl mx-auto mb-4 flex justify-end">
+          <ContinueYesterdayButton title={lastActive.storyTitle} onClick={() => void runContinue(lastActive.childId, lastActive.seriesId)} />
+        </div>
+      )}
+
       {firebaseUser && (
-        <ChildProfileBar
-          children={children}
-          selectedChildId={selectedChildId}
-          onSelect={handleSelectChild}
-          onCreate={async (data) => { await createChild(data); }}
-          onUpdate={async (id, data) => { await updateChild(id, data); }}
-          onDelete={async (id) => { await deleteChild(id); }}
-        />
+        <ChildProfileBar children={children} selectedChildId={selectedChildId} onSelect={handleSelectChild} onCreate={async (data) => { await createChild(data); }} onUpdate={async (id, data) => { await updateChild(id, data); }} onDelete={async (id) => { await deleteChild(id); }} />
       )}
 
       <div className="relative z-10 w-full max-w-4xl mx-auto">
@@ -298,179 +389,16 @@ export default function Home() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 relative z-10">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="childName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-serif text-foreground/90">Who is this story for?</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Child's name"
-                            className="h-12 text-base rounded-2xl bg-muted/40 border-white/10 placeholder:text-muted-foreground/50"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="age"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-serif text-foreground/90">How old are they?</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Age (1–12)"
-                            className="h-12 text-base rounded-2xl bg-muted/40 border-white/10 placeholder:text-muted-foreground/50"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="childName" render={({ field }) => (<FormItem><FormLabel className="text-base font-serif text-foreground/90">Who is this story for?</FormLabel><FormControl><Input placeholder="Child's name" className="h-12 text-base rounded-2xl bg-muted/40 border-white/10 placeholder:text-muted-foreground/50" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="age" render={({ field }) => (<FormItem><FormLabel className="text-base font-serif text-foreground/90">How old are they?</FormLabel><FormControl><Input type="number" placeholder="Age (1–12)" className="h-12 text-base rounded-2xl bg-muted/40 border-white/10 placeholder:text-muted-foreground/50" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="interests"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-serif text-foreground/90">What do they love?</FormLabel>
-                      <div className="flex flex-wrap gap-3 mt-2">
-                        {(["dinosaurs", "space", "princess", "animals", "cars", "magic"] as const).map((id) => {
-                          const isSelected = field.value.includes(id);
-                          const label = id[0].toUpperCase() + id.slice(1);
-                          const icon = { dinosaurs: "🦕", space: "🚀", princess: "👑", animals: "🐨", cars: "🏎️", magic: "✨" }[id];
-                          return (
-                            <motion.div key={id} whileTap={{ scale: 0.93 }} whileHover={{ scale: 1.05 }}>
-                              <Badge
-                                variant={isSelected ? "default" : "outline"}
-                                className={`cursor-pointer px-4 py-2 text-sm rounded-full transition-all duration-300 select-none ${
-                                  isSelected
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted/30 border-white/10 hover:bg-muted/50 text-foreground/80"
-                                }`}
-                                onClick={() =>
-                                  field.onChange(
-                                    isSelected ? field.value.filter((v) => v !== id) : [...field.value, id]
-                                  )
-                                }
-                              >
-                                <span className="mr-1.5 text-base">{icon}</span>
-                                {label}
-                              </Badge>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="length"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-serif text-foreground/90">How long should the story be?</FormLabel>
-                      <div className="grid grid-cols-3 gap-3 mt-2">
-                        {STORY_LENGTHS.map((opt) => {
-                          const isSelected = field.value === opt.value;
-                          return (
-                            <motion.button
-                              key={opt.value}
-                              type="button"
-                              whileHover={{ scale: 1.04 }}
-                              whileTap={{ scale: 0.94 }}
-                              onClick={() => field.onChange(opt.value)}
-                              className={`flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-2xl border text-center transition-all duration-200 select-none ${
-                                isSelected
-                                  ? "border-primary/60 bg-primary/15"
-                                  : "border-white/10 bg-muted/25 hover:border-white/20 hover:bg-muted/40"
-                              }`}
-                            >
-                              <span className="text-sm font-semibold font-serif leading-none">{opt.label}</span>
-                              <span className={`text-[11px] leading-none ${isSelected ? "text-primary/70" : "text-muted-foreground/60"}`}>
-                                {opt.sublabel}
-                              </span>
-                            </motion.button>
-                          );
-                        })}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {selectedTone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>Story tone:</span>
-                    <Badge variant="outline" className="rounded-full border-white/10 text-xs capitalize">
-                      {{ calm: "🌙", exciting: "⚡", silly: "😄", adventurous: "🗺️", magical: "✨" }[selectedTone] ?? ""}{" "}
-                      {selectedTone}
-                    </Badge>
-                  </div>
-                )}
-
-                {selectedChildId && firebaseUser && (
-                  <SeriesPicker
-                    childId={selectedChildId}
-                    series={series}
-                    selectedSeriesId={selectedSeriesId}
-                    onSelect={handleSelectSeries}
-                    onCreate={async (data) => { await createSeries(data); }}
-                    onUpdate={async (id, data) => { await updateSeries(id, data); }}
-                    onDelete={async (id) => { await deleteSeries(id); }}
-                  />
-                )}
-
-                {firebaseUser && selectedChildId && (
-                  <div className="pt-1">
-                    <StoryMemoryPanel
-                      memory={primaryMemory}
-                      loading={memoryLoading}
-                      onRefresh={() => void refreshMemory()}
-                      onClear={() => void clearMemory()}
-                    />
-                  </div>
-                )}
-
-                <div className="pt-2">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -1 }}
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                  >
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="btn-shimmer w-full h-14 text-lg font-serif rounded-2xl text-white border-0 shadow-[0_0_28px_hsl(262_72%_72%/0.4)]"
-                      disabled={generateStoryMutation.isPending || !selectedChild}
-                    >
-                      {generateStoryMutation.isPending ? (
-                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Weaving your story…</>
-                      ) : (
-                        <><Star className="w-5 h-5 mr-2 fill-white/70" /> Create Magic</>
-                      )}
-                    </Button>
-                  </motion.div>
-                </div>
-
-                {selectedSeries && (
-                  <div className="flex items-center gap-3 pt-2">
-                    <ContinueStoryButton
-                      loading={continueLoading}
-                      disabled={!selectedSeries}
-                      onClick={() => void handleContinueStory()}
-                    />
-                  </div>
-                )}
+                <FormField control={form.control} name="interests" render={({ field }) => (<FormItem><FormLabel className="text-base font-serif text-foreground/90">What do they love?</FormLabel><div className="flex flex-wrap gap-3 mt-2">{(["dinosaurs", "space", "princess", "animals", "cars", "magic"] as const).map((id) => { const isSelected = field.value.includes(id); const label = id[0].toUpperCase() + id.slice(1); const icon = { dinosaurs: "🦕", space: "🚀", princess: "👑", animals: "🐨", cars: "🏎️", magic: "✨" }[id]; return (<motion.div key={id} whileTap={{ scale: 0.93 }} whileHover={{ scale: 1.05 }}><Badge variant={isSelected ? "default" : "outline"} className={`cursor-pointer px-4 py-2 text-sm rounded-full transition-all duration-300 select-none ${isSelected ? "bg-primary text-primary-foreground" : "bg-muted/30 border-white/10 hover:bg-muted/50 text-foreground/80"}`} onClick={() => field.onChange(isSelected ? field.value.filter((v) => v !== id) : [...field.value, id])}><span className="mr-1.5 text-base">{icon}</span>{label}</Badge></motion.div>); })}</div><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="length" render={({ field }) => (<FormItem><FormLabel className="text-base font-serif text-foreground/90">How long should the story be?</FormLabel><div className="grid grid-cols-3 gap-3 mt-2">{STORY_LENGTHS.map((opt) => { const isSelected = field.value === opt.value; return (<motion.button key={opt.value} type="button" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.94 }} onClick={() => field.onChange(opt.value)} className={`flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-2xl border text-center transition-all duration-200 select-none ${isSelected ? "border-primary/60 bg-primary/15" : "border-white/10 bg-muted/25 hover:border-white/20 hover:bg-muted/40"}`}><span className="text-sm font-semibold font-serif leading-none">{opt.label}</span><span className={`text-[11px] leading-none ${isSelected ? "text-primary/70" : "text-muted-foreground/60"}`}>{opt.sublabel}</span></motion.button>); })}</div><FormMessage /></FormItem>)} />
+                {selectedTone && (<div className="flex items-center gap-2 text-sm text-muted-foreground"><span>Story tone:</span><Badge variant="outline" className="rounded-full border-white/10 text-xs capitalize">{{ calm: "🌙", exciting: "⚡", silly: "😄", adventurous: "🗺️", magical: "✨" }[selectedTone] ?? ""} {selectedTone}</Badge></div>)}
+                {selectedChildId && firebaseUser && (<SeriesPicker childId={selectedChildId} series={series} selectedSeriesId={selectedSeriesId} onSelect={handleSelectSeries} onCreate={async (data) => { await createSeries(data); }} onUpdate={async (id, data) => { await updateSeries(id, data); }} onDelete={async (id) => { await deleteSeries(id); }} />)}
+                {firebaseUser && selectedChildId && (<div className="pt-1"><StoryMemoryPanel memory={primaryMemory} loading={memoryLoading} onRefresh={() => void refreshMemory()} onClear={() => void clearMemory()} /></div>)}
+                <div className="pt-2"><motion.div whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}><Button type="submit" size="lg" className="btn-shimmer w-full h-14 text-lg font-serif rounded-2xl text-white border-0 shadow-[0_0_28px_hsl(262_72%_72%/0.4)]" disabled={generateStoryMutation.isPending || !selectedChild}>{generateStoryMutation.isPending ? (<><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Weaving your story…</>) : (<><Star className="w-5 h-5 mr-2 fill-white/70" /> Create Magic</>)}</Button></motion.div></div>
+                {selectedSeries && (<div className="flex items-center gap-3 pt-2"><ContinueStoryButton loading={continueLoading} disabled={!selectedSeries} onClick={() => void handleContinueStory()} /></div>)}
               </form>
             </Form>
           </div>
@@ -478,86 +406,8 @@ export default function Home() {
       </div>
 
       <div id="story-reading-area" className="w-full max-w-4xl mx-auto mt-8 story-reading-body">
-        {generatedStory ? (
-          <Card className="border-white/10 bg-card/90 backdrop-blur-sm">
-            <div className="p-6 sm:p-10">
-              <div className="mb-6 space-y-2">
-                <div className="text-sm text-muted-foreground">{estimatedReadMinutes} min read</div>
-                <h2 className="text-3xl sm:text-4xl font-serif leading-tight">{generatedStory.title}</h2>
-                <p className="text-sm text-muted-foreground">{generatedStory.childName}</p>
-              </div>
-
-              <div className="space-y-6 text-[1.08rem] sm:text-[1.15rem] leading-8 sm:leading-9 font-story">
-                {paragraphs.map((paragraph, index) => (
-                  <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-wrap">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-
-              {!savedThisSession && (
-                <div className="mt-8 pt-6 border-t border-white/10">
-                  <Button
-                    variant="outline"
-                    className="rounded-xl border-white/10 hover:bg-white/5 gap-2"
-                    disabled={saveStoryMutation.isPending || !selectedChildId}
-                    onClick={() => {
-                      if (!selectedChildId || !selectedChild) return;
-                      saveStoryMutation.mutate(
-                        {
-                          data: {
-                            childName: selectedChild.name,
-                            emoji: generatedStory.emoji,
-                            title: generatedStory.title,
-                            story: generatedStory.story,
-                            ...(generatedStory.summary ? { storySummary: generatedStory.summary } : {}),
-                            interests: pendingInterests,
-                            childId: selectedChildId,
-                            ...(selectedSeriesId ? { seriesId: selectedSeriesId } : {}),
-                          },
-                        },
-                        {
-                          onSuccess: () => {
-                            setSavedThisSession(true);
-                            void queryClient.invalidateQueries({ queryKey: getGetSavedStoriesQueryKey() });
-                          },
-                        }
-                      );
-                    }}
-                  >
-                    {saveStoryMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookMarked className="w-4 h-4" />}
-                    Save this story
-                  </Button>
-                  {savedThisSession && <span className="ml-3 text-sm text-muted-foreground">Saved ✓</span>}
-                </div>
-              )}
-
-              {savedThisSession && (
-                <div className="mt-8 pt-6 border-t border-white/10 flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">Story saved ✓</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl border-white/10 hover:bg-white/5 gap-2 text-xs"
-                    onClick={handleReset}
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> New story
-                  </Button>
-                </div>
-              )}
-
-              {selectedSeries && (
-                <div className="mt-4">
-                  <ContinueStoryButton
-                    loading={continueLoading}
-                    disabled={!selectedSeries}
-                    onClick={() => void handleContinueStory()}
-                  />
-                </div>
-              )}
-            </div>
-          </Card>
-        ) : null}
+        {generatedStory ? (<Card className="border-white/10 bg-card/90 backdrop-blur-sm"><div className="p-6 sm:p-10"><div className="mb-6 space-y-2"><div className="text-sm text-muted-foreground">{estimatedReadMinutes} min read</div><h2 className="text-3xl sm:text-4xl font-serif leading-tight">{generatedStory.title}</h2><p className="text-sm text-muted-foreground">{generatedStory.childName}</p></div><div className="space-y-6 text-[1.08rem] sm:text-[1.15rem] leading-8 sm:leading-9 font-story">{paragraphs.map((paragraph, index) => (<p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-wrap">{paragraph}</p>))}</div>{!savedThisSession && (<div className="mt-8 pt-6 border-t border-white/10"><Button variant="outline" className="rounded-xl border-white/10 hover:bg-white/5 gap-2" disabled={saveStoryMutation.isPending || !selectedChildId} onClick={() => { if (!selectedChildId || !selectedChild) return; saveStoryMutation.mutate({ data: { childName: selectedChild.name, emoji: generatedStory.emoji, title: generatedStory.title, story: generatedStory.story, ...(generatedStory.summary ? { storySummary: generatedStory.summary } : {}), interests: pendingInterests, childId: selectedChildId, ...(selectedSeriesId ? { seriesId: selectedSeriesId } : {}) } }, { onSuccess: () => { setSavedThisSession(true); void queryClient.invalidateQueries({ queryKey: getGetSavedStoriesQueryKey() }); } }); }} >{saveStoryMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookMarked className="w-4 h-4" />} Save this story</Button>{savedThisSession && <span className="ml-3 text-sm text-muted-foreground">Saved ✓</span>}</div>)}{savedThisSession && (<div className="mt-8 pt-6 border-t border-white/10 flex items-center gap-3"><span className="text-sm text-muted-foreground">Story saved ✓</span><Button variant="outline" size="sm" className="rounded-xl border-white/10 hover:bg-white/5 gap-2 text-xs" onClick={handleReset}><RefreshCw className="w-3.5 h-3.5" /> New story</Button></div>)}{selectedSeries && (<div className="mt-4"><ContinueStoryButton loading={continueLoading} disabled={!selectedSeries} onClick={() => void handleContinueStory()} /></div>)}
+          </div></Card>) : null}
       </div>
     </div>
   );
