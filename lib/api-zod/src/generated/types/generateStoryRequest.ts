@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { GenerateStoryRequestInterestsItem } from "./generateStoryRequestInterestsItem";
+import type { GenerateStoryRequestStoryLength } from "./generateStoryRequestStoryLength";
 
 export interface GenerateStoryRequest {
   /** The child's name */
@@ -18,4 +19,6 @@ export interface GenerateStoryRequest {
   age: number;
   /** The child's interests */
   interests: GenerateStoryRequestInterestsItem[];
+  /** Desired reading length of the story */
+  storyLength?: GenerateStoryRequestStoryLength;
 }

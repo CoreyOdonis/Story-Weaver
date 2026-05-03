@@ -21,6 +21,18 @@ export const GenerateStoryRequestInterestsItem = {
   magic: "magic",
 } as const;
 
+/**
+ * Desired reading length of the story
+ */
+export type GenerateStoryRequestStoryLength =
+  (typeof GenerateStoryRequestStoryLength)[keyof typeof GenerateStoryRequestStoryLength];
+
+export const GenerateStoryRequestStoryLength = {
+  "5min": "5min",
+  "10min": "10min",
+  "15min": "15min",
+} as const;
+
 export interface GenerateStoryRequest {
   /** The child's name */
   childName: string;
@@ -32,6 +44,8 @@ export interface GenerateStoryRequest {
   age: number;
   /** The child's interests */
   interests: GenerateStoryRequestInterestsItem[];
+  /** Desired reading length of the story */
+  storyLength?: GenerateStoryRequestStoryLength;
 }
 
 export interface GenerateStoryResponse {

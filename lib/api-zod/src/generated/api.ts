@@ -21,6 +21,8 @@ export const HealthCheckResponse = zod.object({
  */
 export const generateStoryBodyAgeMax = 12;
 
+export const generateStoryBodyStoryLengthDefault = `5min`;
+
 export const GenerateStoryBody = zod.object({
   childName: zod.string().describe("The child's name"),
   age: zod
@@ -33,6 +35,10 @@ export const GenerateStoryBody = zod.object({
       zod.enum(["dinosaurs", "space", "princess", "animals", "cars", "magic"]),
     )
     .describe("The child's interests"),
+  storyLength: zod
+    .enum(["5min", "10min", "15min"])
+    .default(generateStoryBodyStoryLengthDefault)
+    .describe("Desired reading length of the story"),
 });
 
 export const GenerateStoryResponse = zod.object({

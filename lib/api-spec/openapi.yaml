@@ -279,6 +279,11 @@ components:
             type: string
             enum: [dinosaurs, space, princess, animals, cars, magic]
           description: The child's interests
+        storyLength:
+          type: string
+          enum: ["5min", "10min", "15min"]
+          default: "5min"
+          description: Desired reading length of the story
       required:
         - childName
         - age

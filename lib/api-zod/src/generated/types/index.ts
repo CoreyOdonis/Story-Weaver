@@ -13,6 +13,7 @@ export * from "./generateIllustrationsRequest";
 export * from "./generateIllustrationsResponse";
 export * from "./generateStoryRequest";
 export * from "./generateStoryRequestInterestsItem";
+export * from "./generateStoryRequestStoryLength";
 export * from "./generateStoryResponse";
 export * from "./getStreakParams";
 export * from "./healthStatus";

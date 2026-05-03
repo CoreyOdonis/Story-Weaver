@@ -57,8 +57,15 @@ router.post("/generate-story", async (req, res) => {
     return;
   }
 
-  const { childName, age, interests } = result.data;
+  const { childName, age, interests, storyLength = "5min" } = result.data;
   const interestsList = interests.join(", ");
+
+  const lengthConfig: Record<string, { paragraphs: number; wordRange: string; nameCount: number }> = {
+    "5min":  { paragraphs: 4,  wordRange: "350–450 words",   nameCount: 4  },
+    "10min": { paragraphs: 7,  wordRange: "700–850 words",   nameCount: 6  },
+    "15min": { paragraphs: 11, wordRange: "1100–1300 words", nameCount: 8  },
+  };
+  const { paragraphs, wordRange, nameCount } = lengthConfig[storyLength] ?? lengthConfig["5min"];
 
   const lesson = pickRandom(LESSONS);
   const setting = pickRandom(SETTINGS);
@@ -75,7 +82,7 @@ router.post("/generate-story", async (req, res) => {
             "You are a children's bedtime storyteller. Your stories are magical but peaceful — full of wonder, warmth, and comfort.",
             "",
             "RULES (follow every one strictly):",
-            "- Always include the child's name naturally — woven into the story as if they are really there, at least 4 times.",
+            `- Always include the child's name naturally — woven into the story as if they are really there, at least ${nameCount} times.`,
             "- Use gentle, calming language throughout. Sentences should be simple and rhythmic, like a lullaby — short, flowing, easy to follow.",
             "- Avoid all conflict or fear: no villains, no danger, no chasing, no darkness, no loud noises, no scary moments.",
             "- Include a small positive lesson that emerges naturally from what happens — never stated directly, never preached.",
@@ -95,7 +102,7 @@ router.post("/generate-story", async (req, res) => {
             "",
             "OUTPUT FORMAT:",
             "Respond with valid JSON only — no markdown, no extra text, no code fences.",
-            'Exactly three keys: "title" (short, charming, warm), "story" (4 paragraphs separated by \\n\\n), "emoji" (one emoji for the story\'s theme).',
+            `Exactly three keys: "title" (short, charming, warm), "story" (${paragraphs} paragraphs separated by \\n\\n — approximately ${wordRange} total), "emoji" (one emoji for the story's theme).`,
           ].join("\n"),
         },
         {
@@ -106,7 +113,8 @@ router.post("/generate-story", async (req, res) => {
             `Setting: ${setting}.`,
             `Opening feel: ${starter}`,
             "",
-            `Use ${childName}'s name naturally at least 4 times. Keep it to 4 paragraphs — each one slow and peaceful, like a yawn.`,
+            `Use ${childName}'s name naturally at least ${nameCount} times.`,
+            `Write exactly ${paragraphs} paragraphs — each one slow and peaceful, like a yawn. Total length: approximately ${wordRange}.`,
             `The last paragraph ends with ${childName} closing their eyes and drifting gently off to sleep.`,
           ].join("\n"),
         },

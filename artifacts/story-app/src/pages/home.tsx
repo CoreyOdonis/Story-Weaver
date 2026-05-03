@@ -47,10 +47,19 @@ const INTEREST_OPTIONS: { id: GenerateStoryRequestInterestsItem; label: string; 
   { id: "magic",     label: "Magic",     icon: "✨" },
 ];
 
+const STORY_LENGTHS = [
+  { value: "5min",  label: "5 min",  sublabel: "Quick tale",     icon: "🌙" },
+  { value: "10min", label: "10 min", sublabel: "Classic story",  icon: "📖" },
+  { value: "15min", label: "15 min", sublabel: "Long adventure", icon: "🌟" },
+] as const;
+
+type StoryLengthValue = typeof STORY_LENGTHS[number]["value"];
+
 const formSchema = z.object({
   childName: z.string().min(1, "Please enter a name").max(50),
   age: z.coerce.number().min(1, "Age must be at least 1").max(12, "Age must be 12 or under"),
   interests: z.array(z.string()).min(1, "Select at least one interest"),
+  storyLength: z.enum(["5min", "10min", "15min"]).default("5min"),
 });
 
 const STARS: { x: string; y: string; size: number; delay: number; duration: number }[] = [
@@ -407,14 +416,14 @@ export default function Home() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { childName: "", age: 5, interests: [] },
+    defaultValues: { childName: "", age: 5, interests: [], storyLength: "5min" },
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setSavedThisSession(false);
     setPendingInterests(values.interests.join(", "));
     generateStoryMutation.mutate(
-      { data: { childName: values.childName, age: values.age, interests: values.interests as GenerateStoryRequestInterestsItem[] } },
+      { data: { childName: values.childName, age: values.age, interests: values.interests as GenerateStoryRequestInterestsItem[], storyLength: values.storyLength } },
       {
         onSuccess: (result) => {
           setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji, childName: values.childName });
@@ -599,6 +608,46 @@ export default function Home() {
                                           <span className="mr-1.5 text-base">{interest.icon}</span>{interest.label}
                                         </Badge>
                                       </motion.div>
+                                    );
+                                  })}
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Story length selector */}
+                          <FormField
+                            control={form.control}
+                            name="storyLength"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-base font-serif text-foreground/90">How long should the story be?</FormLabel>
+                                <div className="grid grid-cols-3 gap-3 mt-2">
+                                  {STORY_LENGTHS.map((opt) => {
+                                    const isSelected = field.value === opt.value;
+                                    return (
+                                      <motion.button
+                                        key={opt.value}
+                                        type="button"
+                                        whileHover={{ scale: 1.04 }}
+                                        whileTap={{ scale: 0.94 }}
+                                        onClick={() => field.onChange(opt.value)}
+                                        className={`flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-2xl border text-center transition-all duration-200 select-none ${
+                                          isSelected
+                                            ? "border-primary/60 bg-primary/15 shadow-[0_0_16px_hsl(262_72%_72%/0.3)]"
+                                            : "border-white/10 bg-muted/25 hover:border-white/20 hover:bg-muted/40"
+                                        }`}
+                                        data-testid={`button-length-${opt.value}`}
+                                      >
+                                        <span className="text-2xl leading-none">{opt.icon}</span>
+                                        <span className={`text-sm font-semibold font-serif leading-none ${isSelected ? "text-primary" : "text-foreground/80"}`}>
+                                          {opt.label}
+                                        </span>
+                                        <span className={`text-[11px] leading-none ${isSelected ? "text-primary/70" : "text-muted-foreground/60"}`}>
+                                          {opt.sublabel}
+                                        </span>
+                                      </motion.button>
                                     );
                                   })}
                                 </div>
