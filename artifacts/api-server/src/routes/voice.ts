@@ -59,7 +59,7 @@ router.post("/voice/upload", upload.single("audio"), async (req, res) => {
     form.append("name", voiceName);
     form.append(
       "files",
-      new Blob([file.buffer], { type: file.mimetype }),
+      new Blob([new Uint8Array(file.buffer)], { type: file.mimetype }),
       file.originalname || "voice-sample.mp3"
     );
     form.append("description", "Uploaded via Dreamtime Stories");

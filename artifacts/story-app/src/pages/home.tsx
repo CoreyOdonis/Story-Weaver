@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -7,6 +7,7 @@ import {
   Moon, Star, RefreshCw, BookMarked, Trash2,
   ChevronDown, ChevronUp, Sparkles,
   Play, Pause, Volume2, Loader2, VolumeX, Printer, BookOpen,
+  ImageIcon, Check,
 } from "lucide-react";
 import {
   useGenerateStory,
@@ -15,7 +16,7 @@ import {
   useDeleteSavedStory,
   getGetSavedStoriesQueryKey,
 } from "@workspace/api-client-react";
-import { GenerateStoryRequestInterestsItem } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { GenerateStoryRequestInterestsItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -33,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { useReadAloud } from "@/hooks/useReadAloud";
 import { useStreak } from "@/hooks/useStreak";
 import { usePdfExport } from "@/hooks/usePdfExport";
+import { useIllustratedPrint } from "@/hooks/useIllustratedPrint";
 import { useVoiceProfile } from "@/hooks/useVoiceProfile";
 import { VoiceUploadSection, MyVoicePlayer } from "@/components/VoiceUploadSection";
 
@@ -391,6 +393,10 @@ export default function Home() {
   const queryClient = useQueryClient();
   const { streakCount, justIncreased, recordActivity } = useStreak();
   const { download: downloadPdf, status: pdfStatus, reset: resetPdf } = usePdfExport();
+  const illPrint = useIllustratedPrint();
+  const [showPrintOptions, setShowPrintOptions] = useState(false);
+  const [printType, setPrintType] = useState<"simple" | "illustrated">("simple");
+  const [printBW, setPrintBW] = useState(false);
   const voiceProfile = useVoiceProfile();
   const generateStoryMutation = useGenerateStory();
   const saveStoryMutation = useSaveStory();
@@ -447,7 +453,29 @@ export default function Home() {
     form.reset();
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => setShowPrintOptions((v) => !v);
+
+  const handleExecutePrint = async () => {
+    if (printType === "simple") {
+      window.print();
+      return;
+    }
+    // Illustrated mode
+    if (!generatedStory) return;
+    if (illPrint.status === "ready") {
+      illPrint.triggerPrint(printBW);
+      return;
+    }
+    await illPrint.generate(generatedStory);
+    // status becomes "ready" → auto-trigger via useEffect below
+  };
+
+  // When illustrated fetch completes, trigger print automatically
+  useEffect(() => {
+    if (illPrint.status === "ready" && showPrintOptions && printType === "illustrated") {
+      illPrint.triggerPrint(printBW);
+    }
+  }, [illPrint.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDownloadPdf = () => {
     if (!generatedStory || pdfStatus !== "idle") return;
@@ -455,6 +483,10 @@ export default function Home() {
   };
 
   const paragraphs = generatedStory?.story.split(/\n\n+/).map((p) => p.trim()).filter(Boolean) ?? [];
+  // Split paragraphs into 2 scene groups for illustrated print (beginning+middle / end)
+  const sceneGroups: string[][] = paragraphs.length > 0
+    ? [paragraphs.slice(0, Math.ceil(paragraphs.length / 2)), paragraphs.slice(Math.ceil(paragraphs.length / 2))]
+    : [[], []];
 
   return (
     <div className="min-h-[100dvh] w-full relative overflow-hidden flex flex-col items-center py-10 px-4 sm:px-8">
@@ -651,9 +683,16 @@ export default function Home() {
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
-                      <Button variant="outline" size="lg" onClick={handlePrint} className="rounded-full px-8 font-serif border-white/15 hover:border-white/30 hover:bg-white/5 transition-colors" data-testid="button-print">
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={handlePrint}
+                        className={`rounded-full px-8 font-serif transition-colors ${showPrintOptions ? "border-primary/50 bg-primary/10 text-primary" : "border-white/15 hover:border-white/30 hover:bg-white/5"}`}
+                        data-testid="button-print"
+                      >
                         <Printer className="w-4 h-4 mr-2" />
                         Print Story
+                        <ChevronDown className={`w-3.5 h-3.5 ml-2 transition-transform ${showPrintOptions ? "rotate-180" : ""}`} />
                       </Button>
                     </motion.div>
 
@@ -697,6 +736,88 @@ export default function Home() {
                       </Button>
                     </motion.div>
                   </motion.div>
+
+                  {/* ── PRINT OPTIONS PANEL ── */}
+                  <AnimatePresence>
+                    {showPrintOptions && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.28, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-4 rounded-2xl border border-white/10 bg-white/3 backdrop-blur-sm p-5 space-y-4">
+                          {/* Format toggle */}
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2.5 uppercase tracking-wide">Print format</p>
+                            <div className="flex gap-2">
+                              {(["simple", "illustrated"] as const).map((type) => (
+                                <button
+                                  key={type}
+                                  onClick={() => { setPrintType(type); illPrint.reset(); }}
+                                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-medium transition-all ${
+                                    printType === type
+                                      ? "border-primary/50 bg-primary/15 text-primary"
+                                      : "border-white/10 bg-white/3 text-muted-foreground hover:border-white/20 hover:bg-white/5"
+                                  }`}
+                                >
+                                  {type === "simple" ? <Printer className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
+                                  {type === "simple" ? "Simple Print" : "Illustrated Print"}
+                                  {printType === type && <Check className="w-3.5 h-3.5 ml-auto" />}
+                                </button>
+                              ))}
+                            </div>
+                            {printType === "illustrated" && (
+                              <p className="text-[11px] text-muted-foreground/60 mt-2 pl-1">
+                                Generates 3 watercolour scenes then opens the print dialog (takes ~30 s).
+                              </p>
+                            )}
+                          </div>
+
+                          {/* B&W toggle */}
+                          <label className="flex items-center gap-3 cursor-pointer group">
+                            <div
+                              className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${printBW ? "bg-primary border-primary" : "border-white/30 bg-white/5"}`}
+                              onClick={() => setPrintBW((v) => !v)}
+                            >
+                              {printBW && <Check className="w-2.5 h-2.5 text-white" />}
+                            </div>
+                            <span
+                              className="text-sm text-muted-foreground group-hover:text-foreground/70 transition-colors select-none"
+                              onClick={() => setPrintBW((v) => !v)}
+                            >
+                              Black &amp; white friendly
+                              <span className="text-xs text-muted-foreground/50 ml-1">(desaturates illustrations)</span>
+                            </span>
+                          </label>
+
+                          {/* Error */}
+                          {illPrint.status === "error" && (
+                            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                              {illPrint.error ?? "Could not generate illustrations — please try again."}
+                            </p>
+                          )}
+
+                          {/* Print action */}
+                          <div className="flex justify-end pt-1">
+                            <Button
+                              onClick={handleExecutePrint}
+                              disabled={illPrint.status === "generating"}
+                              className="rounded-full px-7 font-serif bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 transition-all disabled:opacity-60"
+                            >
+                              {illPrint.status === "generating" ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Drawing illustrations…</>
+                              ) : (
+                                <><Printer className="w-4 h-4 mr-2" />Print</>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                 </div>
               </Card>
             </motion.div>
@@ -726,6 +847,48 @@ export default function Home() {
 
               <div className="print-footer">✦ &nbsp; Dreamtime Stories &nbsp; ✦</div>
             </div>
+          </div>
+        )}
+
+        {/* ── ILLUSTRATED PRINT AREA (hidden in browser, revealed by @media print with body.print-illustrated) ── */}
+        {generatedStory && illPrint.illustrations.length > 0 && (
+          <div id="story-print-illustrated-area" aria-hidden="true">
+            {/* Cover page */}
+            <div className="print-ill-page">
+              {illPrint.illustrations[0] && (
+                <img
+                  src={`data:image/png;base64,${illPrint.illustrations[0]}`}
+                  className="print-ill-img print-ill-cover-img"
+                  alt=""
+                />
+              )}
+              <div className="print-ill-cover-text">
+                <p className="print-ill-branding">D R E A M T I M E &nbsp; S T O R I E S</p>
+                <div className="print-ill-divider" />
+                <h1 className="print-ill-title">{generatedStory.title}</h1>
+                <p className="print-ill-subtitle">A bedtime story for {generatedStory.childName}</p>
+              </div>
+              <div className="print-ill-footer">✦ &nbsp; Dreamtime Stories &nbsp; ✦ &nbsp;&nbsp; Page 1</div>
+            </div>
+
+            {/* Scene pages */}
+            {sceneGroups.map((group, i) => (
+              <div key={i} className="print-ill-page">
+                {illPrint.illustrations[i + 1] && (
+                  <img
+                    src={`data:image/png;base64,${illPrint.illustrations[i + 1]}`}
+                    className="print-ill-img print-ill-scene-img"
+                    alt=""
+                  />
+                )}
+                <div className="print-ill-text">
+                  {group.map((para, j) => (
+                    <p key={j}>{para}</p>
+                  ))}
+                </div>
+                <div className="print-ill-footer">✦ &nbsp; Dreamtime Stories &nbsp; ✦ &nbsp;&nbsp; Page {i + 2}</div>
+              </div>
+            ))}
           </div>
         )}
 

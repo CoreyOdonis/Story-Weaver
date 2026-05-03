@@ -281,7 +281,7 @@
   /* Hide the entire app UI */
   body * { visibility: hidden !important; }
 
-  /* Reveal only the print area */
+  /* ── SIMPLE PRINT (default) ── */
   #story-print-area,
   #story-print-area * { visibility: visible !important; }
 
@@ -292,6 +292,147 @@
     align-items: flex-start;
     justify-content: center;
     background: #fff !important;
+  }
+
+  /* ── ILLUSTRATED PRINT ── when body.print-illustrated is set ── */
+  body.print-illustrated #story-print-area,
+  body.print-illustrated #story-print-area * {
+    visibility: hidden !important;
+    display: none !important;
+  }
+
+  body.print-illustrated #story-print-illustrated-area {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: #fff !important;
+    overflow: visible;
+  }
+
+  body.print-illustrated #story-print-illustrated-area,
+  body.print-illustrated #story-print-illustrated-area * {
+    visibility: visible !important;
+  }
+
+  /* Each storybook page */
+  .print-ill-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 12mm 16mm 10mm;
+    box-sizing: border-box;
+    background: #fff !important;
+    font-family: 'Lora', Georgia, serif;
+    color: #1a1a1a;
+    break-after: page;
+    page-break-after: always;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .print-ill-page:last-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Illustration images */
+  .print-ill-img {
+    width: 100%;
+    object-fit: cover;
+    display: block;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* B&W mode — desaturate images */
+  body.print-bw .print-ill-img {
+    filter: grayscale(1);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Cover page image */
+  .print-ill-cover-img {
+    height: 130mm;
+    border-radius: 2mm;
+    margin-bottom: 6mm;
+  }
+
+  /* Cover text block */
+  .print-ill-cover-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .print-ill-branding {
+    font-family: 'Baloo 2', cursive;
+    font-size: 7.5pt;
+    letter-spacing: 0.2em;
+    color: #9966cc;
+    text-transform: uppercase;
+    margin-bottom: 4mm;
+  }
+
+  .print-ill-title {
+    font-family: 'Baloo 2', cursive;
+    font-size: 24pt;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 3mm;
+    line-height: 1.2;
+  }
+
+  .print-ill-subtitle {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 11.5pt;
+    font-style: italic;
+    color: #666;
+    margin: 0;
+  }
+
+  .print-ill-divider {
+    width: 60%;
+    height: 0.5pt;
+    background: #ccc;
+    margin: 5mm auto;
+  }
+
+  /* Scene page image */
+  .print-ill-scene-img {
+    height: 108mm;
+    border-radius: 2mm;
+    margin-bottom: 5mm;
+  }
+
+  /* Scene text */
+  .print-ill-text {
+    flex: 1;
+  }
+
+  .print-ill-text p {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 12.5pt;
+    line-height: 1.85;
+    color: #1a1a1a;
+    margin: 0 0 8pt;
+    text-align: justify;
+    hyphens: auto;
+  }
+
+  /* Shared footer */
+  .print-ill-footer {
+    font-family: 'Baloo 2', cursive;
+    font-size: 8.5pt;
+    color: #999;
+    letter-spacing: 0.12em;
+    text-align: center;
+    padding-top: 4mm;
+    border-top: 0.4pt solid #ddd;
+    margin-top: auto;
   }
 
   .print-page {
@@ -382,8 +523,9 @@
   }
 }
 
-/* Hide the print area in normal view */
+/* Hide print areas in normal browser view */
 #story-print-area { display: none; }
+#story-print-illustrated-area { display: none; }
 
 @layer utilities {
   .font-story { font-family: var(--app-font-story); }

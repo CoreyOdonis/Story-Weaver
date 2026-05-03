@@ -3,6 +3,7 @@ import {
   useGetVoiceProfile,
   useDeleteVoiceProfile,
   getGetVoiceProfileQueryKey,
+  getGetVoiceProfileQueryOptions,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClientId } from "./useClientId";
@@ -35,10 +36,9 @@ export function useVoiceProfile(): VoiceProfileState {
 
   const { data, isLoading } = useGetVoiceProfile(clientId, {
     query: {
+      queryKey: getGetVoiceProfileQueryKey(clientId),
       enabled: !!clientId,
       retry: false,
-      // Treat 404 as "no profile" — don't throw
-      throwOnError: false,
     },
   });
 
@@ -85,7 +85,7 @@ export function useVoiceProfile(): VoiceProfileState {
 
   const remove = useCallback(async () => {
     if (!clientId) return;
-    await deleteProfileMutation.mutateAsync(clientId);
+    await deleteProfileMutation.mutateAsync({ clientId });
     await queryClient.invalidateQueries({
       queryKey: getGetVoiceProfileQueryKey(clientId),
     });
