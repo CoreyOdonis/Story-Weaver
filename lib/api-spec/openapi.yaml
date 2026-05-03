@@ -142,6 +142,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /generate-illustrations:
+    post:
+      operationId: generateIllustrations
+      tags: [stories]
+      summary: Generate story illustrations
+      description: Generates soft watercolour illustrations for story scenes using AI image generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateIllustrationsRequest"
+      responses:
+        "200":
+          description: Generated illustrations as base64-encoded PNG strings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateIllustrationsResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Image generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /streak/activity:
     post:
       operationId: recordStreakActivity
@@ -298,6 +329,36 @@ components:
       required:
         - streakCount
         - increased
+    GenerateIllustrationsRequest:
+      type: object
+      properties:
+        story:
+          type: string
+          description: Full story text
+        title:
+          type: string
+          description: Story title
+        childName:
+          type: string
+          description: Child's name
+        emoji:
+          type: string
+          description: Story emoji
+      required:
+        - story
+        - title
+        - childName
+        - emoji
+    GenerateIllustrationsResponse:
+      type: object
+      properties:
+        images:
+          type: array
+          items:
+            type: string
+          description: Base64-encoded PNG image data for each illustrated scene
+      required:
+        - images
     ErrorResponse:
       type: object
       properties:

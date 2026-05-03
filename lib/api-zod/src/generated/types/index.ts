@@ -8,6 +8,8 @@
 
 export * from "./deleteResponse";
 export * from "./errorResponse";
+export * from "./generateIllustrationsRequest";
+export * from "./generateIllustrationsResponse";
 export * from "./generateStoryRequest";
 export * from "./generateStoryRequestInterestsItem";
 export * from "./generateStoryResponse";

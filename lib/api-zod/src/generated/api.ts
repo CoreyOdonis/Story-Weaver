@@ -99,6 +99,23 @@ export const GetStreakResponse = zod.object({
 });
 
 /**
+ * Generates soft watercolour illustrations for story scenes using AI image generation
+ * @summary Generate story illustrations
+ */
+export const GenerateIllustrationsBody = zod.object({
+  story: zod.string().describe("Full story text"),
+  title: zod.string().describe("Story title"),
+  childName: zod.string().describe("Child's name"),
+  emoji: zod.string().describe("Story emoji"),
+});
+
+export const GenerateIllustrationsResponse = zod.object({
+  images: zod
+    .array(zod.string())
+    .describe("Base64-encoded PNG image data for each illustrated scene"),
+});
+
+/**
  * Records activity for today and updates the streak counter
  * @summary Record daily activity
  */

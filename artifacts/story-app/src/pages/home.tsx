@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon, Star, RefreshCw, BookMarked, Trash2,
   ChevronDown, ChevronUp, Sparkles,
-  Play, Pause, Volume2, Loader2, VolumeX, Printer,
+  Play, Pause, Volume2, Loader2, VolumeX, Printer, BookOpen,
 } from "lucide-react";
 import {
   useGenerateStory,
@@ -32,6 +32,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useReadAloud } from "@/hooks/useReadAloud";
 import { useStreak } from "@/hooks/useStreak";
+import { usePdfExport } from "@/hooks/usePdfExport";
 
 const INTEREST_OPTIONS: { id: GenerateStoryRequestInterestsItem; label: string; icon: string }[] = [
   { id: "dinosaurs", label: "Dinosaurs", icon: "🦕" },
@@ -387,6 +388,7 @@ export default function Home() {
 
   const queryClient = useQueryClient();
   const { streakCount, justIncreased, recordActivity } = useStreak();
+  const { download: downloadPdf, status: pdfStatus, reset: resetPdf } = usePdfExport();
   const generateStoryMutation = useGenerateStory();
   const saveStoryMutation = useSaveStory();
   const deleteStoryMutation = useDeleteSavedStory();
@@ -438,10 +440,16 @@ export default function Home() {
     setGeneratedStory(null);
     setSavedThisSession(false);
     generateStoryMutation.reset();
+    resetPdf();
     form.reset();
   };
 
   const handlePrint = () => window.print();
+
+  const handleDownloadPdf = () => {
+    if (!generatedStory || pdfStatus !== "idle") return;
+    downloadPdf(generatedStory);
+  };
 
   const paragraphs = generatedStory?.story.split(/\n\n+/).map((p) => p.trim()).filter(Boolean) ?? [];
 
@@ -634,6 +642,39 @@ export default function Home() {
                       <Button variant="outline" size="lg" onClick={handlePrint} className="rounded-full px-8 font-serif border-white/15 hover:border-white/30 hover:bg-white/5 transition-colors" data-testid="button-print">
                         <Printer className="w-4 h-4 mr-2" />
                         Print Story
+                      </Button>
+                    </motion.div>
+
+                    <motion.div whileHover={{ scale: pdfStatus === "idle" ? 1.04 : 1 }} whileTap={{ scale: pdfStatus === "idle" ? 0.96 : 1 }}>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={handleDownloadPdf}
+                        disabled={pdfStatus !== "idle"}
+                        className="rounded-full px-8 font-serif border-secondary/30 hover:border-secondary/60 hover:bg-secondary/10 text-secondary transition-colors disabled:opacity-60"
+                        data-testid="button-download-pdf"
+                      >
+                        {pdfStatus === "illustrating" ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Drawing illustrations…
+                          </>
+                        ) : pdfStatus === "building" ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Building PDF…
+                          </>
+                        ) : pdfStatus === "error" ? (
+                          <>
+                            <BookOpen className="w-4 h-4 mr-2" />
+                            Try Again
+                          </>
+                        ) : (
+                          <>
+                            <BookOpen className="w-4 h-4 mr-2" />
+                            Download Storybook PDF
+                          </>
+                        )}
                       </Button>
                     </motion.div>
 

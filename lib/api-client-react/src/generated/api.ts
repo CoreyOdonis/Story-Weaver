@@ -19,6 +19,8 @@ import type {
 import type {
   DeleteResponse,
   ErrorResponse,
+  GenerateIllustrationsRequest,
+  GenerateIllustrationsResponse,
   GenerateStoryRequest,
   GenerateStoryResponse,
   GetStreakParams,
@@ -544,6 +546,97 @@ export function useGetStreak<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Generates soft watercolour illustrations for story scenes using AI image generation
+ * @summary Generate story illustrations
+ */
+export const getGenerateIllustrationsUrl = () => {
+  return `/api/generate-illustrations`;
+};
+
+export const generateIllustrations = async (
+  generateIllustrationsRequest: GenerateIllustrationsRequest,
+  options?: RequestInit,
+): Promise<GenerateIllustrationsResponse> => {
+  return customFetch<GenerateIllustrationsResponse>(
+    getGenerateIllustrationsUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(generateIllustrationsRequest),
+    },
+  );
+};
+
+export const getGenerateIllustrationsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateIllustrations>>,
+    TError,
+    { data: BodyType<GenerateIllustrationsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateIllustrations>>,
+  TError,
+  { data: BodyType<GenerateIllustrationsRequest> },
+  TContext
+> => {
+  const mutationKey = ["generateIllustrations"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateIllustrations>>,
+    { data: BodyType<GenerateIllustrationsRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateIllustrations(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateIllustrationsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateIllustrations>>
+>;
+export type GenerateIllustrationsMutationBody =
+  BodyType<GenerateIllustrationsRequest>;
+export type GenerateIllustrationsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate story illustrations
+ */
+export const useGenerateIllustrations = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateIllustrations>>,
+    TError,
+    { data: BodyType<GenerateIllustrationsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateIllustrations>>,
+  TError,
+  { data: BodyType<GenerateIllustrationsRequest> },
+  TContext
+> => {
+  return useMutation(getGenerateIllustrationsMutationOptions(options));
+};
 
 /**
  * Records activity for today and updates the streak counter

@@ -84,6 +84,22 @@ export interface StreakResult {
   increased: boolean;
 }
 
+export interface GenerateIllustrationsRequest {
+  /** Full story text */
+  story: string;
+  /** Story title */
+  title: string;
+  /** Child's name */
+  childName: string;
+  /** Story emoji */
+  emoji: string;
+}
+
+export interface GenerateIllustrationsResponse {
+  /** Base64-encoded PNG image data for each illustrated scene */
+  images: string[];
+}
+
 export interface ErrorResponse {
   error: string;
 }
