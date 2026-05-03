@@ -35,6 +35,55 @@ function serializeMemory(row: typeof storyMemoryTable.$inferSelect) {
   };
 }
 
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function mergeCharacterLists(
+  existing: Array<{ name: string; description?: string }>,
+  incoming: Array<{ name: string; description?: string }>
+) {
+  const merged = new Map<string, { name: string; description?: string }>();
+  for (const item of existing) {
+    merged.set(normalizeName(item.name), { ...item, name: item.name.trim() });
+  }
+  for (const item of incoming) {
+    const key = normalizeName(item.name);
+    const current = merged.get(key);
+    const description = item.description?.trim();
+    if (!current) {
+      merged.set(key, { name: item.name.trim(), ...(description ? { description } : {}) });
+      continue;
+    }
+    merged.set(key, {
+      name: current.name,
+      description: description || current.description,
+    });
+  }
+  return [...merged.values()];
+}
+
+function mergeStringLists(existing: string[], incoming: string[]) {
+  const merged = new Map<string, string>();
+  for (const item of existing) merged.set(item.trim().toLowerCase(), item.trim());
+  for (const item of incoming) merged.set(item.trim().toLowerCase(), item.trim());
+  return [...merged.values()];
+}
+
+function mergeMemory(
+  existing: ExtractedMemory | null,
+  incoming: ExtractedMemory
+): ExtractedMemory {
+  if (!existing) return incoming;
+  return {
+    mainCharacters: mergeCharacterLists(existing.mainCharacters, incoming.mainCharacters),
+    sideCharacters: mergeCharacterLists(existing.sideCharacters, incoming.sideCharacters),
+    locations: mergeCharacterLists(existing.locations, incoming.locations),
+    themes: mergeStringLists(existing.themes, incoming.themes),
+    tonePreferences: mergeStringLists(existing.tonePreferences, incoming.tonePreferences),
+  };
+}
+
 router.get("/memory", requireAuth, async (req: AuthRequest, res) => {
   const childId = req.query.childId ? Number(req.query.childId) : null;
   const seriesId = req.query.seriesId ? Number(req.query.seriesId) : null;
@@ -163,6 +212,32 @@ export interface ExtractedMemory {
   tonePreferences: string[];
 }
 
+function parseMemoryJson(raw: string | null | undefined): ExtractedMemory | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<ExtractedMemory>;
+    return {
+      mainCharacters: Array.isArray(parsed.mainCharacters) ? parsed.mainCharacters : [],
+      sideCharacters: Array.isArray(parsed.sideCharacters) ? parsed.sideCharacters : [],
+      locations: Array.isArray(parsed.locations) ? parsed.locations : [],
+      themes: Array.isArray(parsed.themes) ? parsed.themes : [],
+      tonePreferences: Array.isArray(parsed.tonePreferences) ? parsed.tonePreferences : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function memoryFromRow(row: typeof storyMemoryTable.$inferSelect): ExtractedMemory {
+  return {
+    mainCharacters: JSON.parse(row.mainCharacters) as ExtractedMemory["mainCharacters"],
+    sideCharacters: JSON.parse(row.sideCharacters) as ExtractedMemory["sideCharacters"],
+    locations: JSON.parse(row.locations) as ExtractedMemory["locations"],
+    themes: JSON.parse(row.themes) as string[],
+    tonePreferences: JSON.parse(row.tonePreferences) as string[],
+  };
+}
+
 export async function extractMemoryFromStory(
   title: string,
   story: string,
@@ -181,7 +256,9 @@ export async function extractMemoryFromStory(
         content: [
           "Extract story elements from the given bedtime story.",
           existingContext,
-          "Merge with existing memory — do not duplicate entries, update descriptions where richer detail is available.",
+          "Find NEW characters introduced in this story and include them.",
+          "If characters, locations, or themes already exist, preserve them and enrich descriptions when new detail is available.",
+          "Do not duplicate names. Normalize by name and only keep one entry per entity.",
           "Return ONLY valid JSON with this shape:",
           '{"mainCharacters":[{"name":"...","description":"..."}],"sideCharacters":[{"name":"...","description":"..."}],"locations":[{"name":"...","description":"..."}],"themes":["..."],"tonePreferences":["..."]}',
           "mainCharacters: the 1-3 most central recurring characters.",
@@ -203,7 +280,15 @@ export async function extractMemoryFromStory(
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) return null;
   try {
-    return JSON.parse(match[0]) as ExtractedMemory;
+    const parsed = JSON.parse(match[0]) as Partial<ExtractedMemory>;
+    const incoming: ExtractedMemory = {
+      mainCharacters: Array.isArray(parsed.mainCharacters) ? parsed.mainCharacters : [],
+      sideCharacters: Array.isArray(parsed.sideCharacters) ? parsed.sideCharacters : [],
+      locations: Array.isArray(parsed.locations) ? parsed.locations : [],
+      themes: Array.isArray(parsed.themes) ? parsed.themes : [],
+      tonePreferences: Array.isArray(parsed.tonePreferences) ? parsed.tonePreferences : [],
+    };
+    return mergeMemory(existingMemory, incoming);
   } catch {
     return null;
   }
@@ -231,16 +316,7 @@ export async function upsertMemoryAfterStory(params: {
       .where(and(...conditions))
       .limit(1);
 
-    const existingMemory: ExtractedMemory | null = existing
-      ? {
-          mainCharacters: JSON.parse(existing.mainCharacters) as ExtractedMemory["mainCharacters"],
-          sideCharacters: JSON.parse(existing.sideCharacters) as ExtractedMemory["sideCharacters"],
-          locations: JSON.parse(existing.locations) as ExtractedMemory["locations"],
-          themes: JSON.parse(existing.themes) as string[],
-          tonePreferences: JSON.parse(existing.tonePreferences) as string[],
-        }
-      : null;
-
+    const existingMemory = existing ? memoryFromRow(existing) : null;
     const extracted = await extractMemoryFromStory(title, story, existingMemory);
     if (!extracted) return;
 
@@ -292,13 +368,7 @@ export async function loadMemoryForPrompt(params: {
 
     if (!row) return null;
 
-    return {
-      mainCharacters: JSON.parse(row.mainCharacters) as ExtractedMemory["mainCharacters"],
-      sideCharacters: JSON.parse(row.sideCharacters) as ExtractedMemory["sideCharacters"],
-      locations: JSON.parse(row.locations) as ExtractedMemory["locations"],
-      themes: JSON.parse(row.themes) as string[],
-      tonePreferences: JSON.parse(row.tonePreferences) as string[],
-    };
+    return memoryFromRow(row);
   } catch {
     return null;
   }
