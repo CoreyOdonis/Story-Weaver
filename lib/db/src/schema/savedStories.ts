@@ -12,6 +12,7 @@ export const savedStoriesTable = pgTable("saved_stories", {
   emoji: text("emoji").notNull(),
   title: text("title").notNull(),
   story: text("story").notNull(),
+  storySummary: text("story_summary"),
   interests: text("interests").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

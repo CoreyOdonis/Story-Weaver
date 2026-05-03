@@ -246,6 +246,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeleteVoiceResponse'
 
+  /memory:
+    get:
+      summary: Get story memory for a child or series
+      parameters:
+        - name: childId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: seriesId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Story memory records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StoryMemory'
+    put:
+      summary: Upsert story memory for a child or series
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMemoryRequest'
+      responses:
+        '200':
+          description: Updated story memory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryMemory'
+    delete:
+      summary: Delete story memory for a child or series
+      parameters:
+        - name: childId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: seriesId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+
 components:
   schemas:
     HealthStatus:
@@ -281,6 +340,12 @@ components:
           type: string
           enum: [calm, exciting, silly, adventurous, magical]
           description: Tone of the story
+        childId:
+          type: integer
+          description: Child profile ID for memory lookup
+        seriesId:
+          type: integer
+          description: Series ID for memory lookup
 
     GenerateStoryResponse:
       type: object
@@ -311,9 +376,9 @@ components:
           type: string
         story:
           type: string
-        summary:
+        storySummary:
           type: string
-          description: Short 3-5 sentence summary of the story
+          description: Short 3-5 sentence summary for use in next episode
         interests:
           type: string
           description: Comma-separated interests
@@ -341,10 +406,10 @@ components:
           type: string
         story:
           type: string
-        summary:
+        storySummary:
           type: string
           nullable: true
-          description: Short 3-5 sentence summary of the story
+          description: Short summary stored with the story
         interests:
           type: string
         createdAt:
@@ -352,15 +417,101 @@ components:
         childId:
           type: integer
           nullable: true
-          description: ID of the child profile this story is linked to
         seriesId:
           type: integer
           nullable: true
-          description: ID of the series this story belongs to
         episodeNumber:
           type: integer
           nullable: true
-          description: Episode number within the series
+
+    MemoryCharacter:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    MemoryLocation:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    StoryMemory:
+      type: object
+      required: [id, userId, childId, mainCharacters, sideCharacters, locations, themes, tonePreferences, updatedAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        childId:
+          type: integer
+        seriesId:
+          type: integer
+          nullable: true
+        mainCharacters:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryCharacter'
+          description: Main recurring characters
+        sideCharacters:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryCharacter'
+          description: Supporting characters
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryLocation'
+          description: Settings and locations
+        themes:
+          type: array
+          items:
+            type: string
+          description: Recurring story themes
+        tonePreferences:
+          type: array
+          items:
+            type: string
+          description: Observed tone preferences
+        updatedAt:
+          type: string
+
+    UpsertMemoryRequest:
+      type: object
+      required: [childId]
+      properties:
+        childId:
+          type: integer
+        seriesId:
+          type: integer
+          nullable: true
+        mainCharacters:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryCharacter'
+        sideCharacters:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryCharacter'
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryLocation'
+        themes:
+          type: array
+          items:
+            type: string
+        tonePreferences:
+          type: array
+          items:
+            type: string
 
     StorySeries:
       type: object

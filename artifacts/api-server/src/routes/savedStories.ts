@@ -71,14 +71,11 @@ router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
         emoji,
         title,
         story,
+        storySummary: storySummary ?? null,
         interests,
       })
       .returning();
-
-    res.status(201).json({
-      ...saved,
-      storySummary: storySummary ?? null,
-    });
+    res.status(201).json(saved);
   } catch (err) {
     req.log.error({ err }, "Failed to save story");
     res.status(500).json({ error: "Could not save story." });

@@ -10,6 +10,7 @@ import authRouter from "./auth";
 import preferencesRouter from "./preferences";
 import childrenRouter from "./children";
 import seriesRouter from "./series";
+import memoryRouter from "./memory";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(illustrationsRouter);
 router.use(voiceRouter);
 router.use(childrenRouter);
 router.use(seriesRouter);
+router.use(memoryRouter);
 
 export default router;

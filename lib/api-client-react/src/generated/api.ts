@@ -17,6 +17,7 @@ import type {
 
 import type {
   CreateSeriesRequest,
+  DeleteMemoryParams,
   DeleteResponse,
   DeleteVoiceParams,
   DeleteVoiceResponse,
@@ -25,16 +26,19 @@ import type {
   GenerateIllustrationsResponse,
   GenerateStoryRequest,
   GenerateStoryResponse,
+  GetMemoryParams,
   GetSeriesParams,
   GetStreakParams,
   GetVoiceParams,
   HealthStatus,
   SaveStoryRequest,
   SavedStory,
+  StoryMemory,
   StorySeries,
   StreakActivityRequest,
   StreakData,
   StreakResult,
+  UpsertMemoryRequest,
   VoiceProfileResponse,
 } from "./api.schemas";
 
@@ -1270,4 +1274,280 @@ export const useDeleteVoice = <
   TContext
 > => {
   return useMutation(getDeleteVoiceMutationOptions(options));
+};
+
+/**
+ * @summary Get story memory for a child or series
+ */
+export const getGetMemoryUrl = (params: GetMemoryParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/memory?${stringifiedParams}`
+    : `/api/memory`;
+};
+
+export const getMemory = async (
+  params: GetMemoryParams,
+  options?: RequestInit,
+): Promise<StoryMemory[]> => {
+  return customFetch<StoryMemory[]>(getGetMemoryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMemoryQueryKey = (params?: GetMemoryParams) => {
+  return [`/api/memory`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMemoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMemory>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMemoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMemory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMemoryQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemory>>> = ({
+    signal,
+  }) => getMemory(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMemory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMemoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMemory>>
+>;
+export type GetMemoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get story memory for a child or series
+ */
+
+export function useGetMemory<
+  TData = Awaited<ReturnType<typeof getMemory>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMemoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMemory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMemoryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upsert story memory for a child or series
+ */
+export const getPutMemoryUrl = () => {
+  return `/api/memory`;
+};
+
+export const putMemory = async (
+  upsertMemoryRequest: UpsertMemoryRequest,
+  options?: RequestInit,
+): Promise<StoryMemory> => {
+  return customFetch<StoryMemory>(getPutMemoryUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertMemoryRequest),
+  });
+};
+
+export const getPutMemoryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putMemory>>,
+    TError,
+    { data: BodyType<UpsertMemoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putMemory>>,
+  TError,
+  { data: BodyType<UpsertMemoryRequest> },
+  TContext
+> => {
+  const mutationKey = ["putMemory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putMemory>>,
+    { data: BodyType<UpsertMemoryRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return putMemory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutMemoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putMemory>>
+>;
+export type PutMemoryMutationBody = BodyType<UpsertMemoryRequest>;
+export type PutMemoryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upsert story memory for a child or series
+ */
+export const usePutMemory = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putMemory>>,
+    TError,
+    { data: BodyType<UpsertMemoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof putMemory>>,
+  TError,
+  { data: BodyType<UpsertMemoryRequest> },
+  TContext
+> => {
+  return useMutation(getPutMemoryMutationOptions(options));
+};
+
+/**
+ * @summary Delete story memory for a child or series
+ */
+export const getDeleteMemoryUrl = (params: DeleteMemoryParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/memory?${stringifiedParams}`
+    : `/api/memory`;
+};
+
+export const deleteMemory = async (
+  params: DeleteMemoryParams,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteMemoryUrl(params), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMemoryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMemory>>,
+    TError,
+    { params: DeleteMemoryParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMemory>>,
+  TError,
+  { params: DeleteMemoryParams },
+  TContext
+> => {
+  const mutationKey = ["deleteMemory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMemory>>,
+    { params: DeleteMemoryParams }
+  > = (props) => {
+    const { params } = props ?? {};
+
+    return deleteMemory(params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMemoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMemory>>
+>;
+
+export type DeleteMemoryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete story memory for a child or series
+ */
+export const useDeleteMemory = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMemory>>,
+    TError,
+    { params: DeleteMemoryParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMemory>>,
+  TError,
+  { params: DeleteMemoryParams },
+  TContext
+> => {
+  return useMutation(getDeleteMemoryMutationOptions(options));
 };

@@ -23,4 +23,8 @@ export interface GenerateStoryRequest {
   storyLength?: GenerateStoryRequestStoryLength;
   /** Tone of the story */
   tone?: GenerateStoryRequestTone;
+  /** Child profile ID for memory lookup */
+  childId?: number;
+  /** Series ID for memory lookup */
+  seriesId?: number;
 }

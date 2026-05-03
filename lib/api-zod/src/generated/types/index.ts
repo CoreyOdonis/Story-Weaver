@@ -6,6 +6,7 @@
  */
 
 export * from "./createSeriesRequest";
+export * from "./deleteMemoryParams";
 export * from "./deleteResponse";
 export * from "./deleteVoiceParams";
 export * from "./deleteVoiceResponse";
@@ -17,14 +18,19 @@ export * from "./generateStoryRequestInterestsItem";
 export * from "./generateStoryRequestStoryLength";
 export * from "./generateStoryRequestTone";
 export * from "./generateStoryResponse";
+export * from "./getMemoryParams";
 export * from "./getSeriesParams";
 export * from "./getStreakParams";
 export * from "./getVoiceParams";
 export * from "./healthStatus";
+export * from "./memoryCharacter";
+export * from "./memoryLocation";
 export * from "./savedStory";
 export * from "./saveStoryRequest";
+export * from "./storyMemory";
 export * from "./storySeries";
 export * from "./streakActivityRequest";
 export * from "./streakData";
 export * from "./streakResult";
+export * from "./upsertMemoryRequest";
 export * from "./voiceProfileResponse";

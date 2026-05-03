@@ -12,25 +12,16 @@ export interface SavedStory {
   title: string;
   story: string;
   /**
-   * Short 3-5 sentence summary of the story
+   * Short summary stored with the story
    * @nullable
    */
-  summary?: string | null;
+  storySummary?: string | null;
   interests: string;
   createdAt: string;
-  /**
-   * ID of the child profile this story is linked to
-   * @nullable
-   */
+  /** @nullable */
   childId?: number | null;
-  /**
-   * ID of the series this story belongs to
-   * @nullable
-   */
+  /** @nullable */
   seriesId?: number | null;
-  /**
-   * Episode number within the series
-   * @nullable
-   */
+  /** @nullable */
   episodeNumber?: number | null;
 }

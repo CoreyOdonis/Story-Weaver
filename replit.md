@@ -22,7 +22,9 @@ Tables in PostgreSQL (managed via Drizzle ORM):
 
 - **users** — Firebase UID, name, email
 - **children** — `id`, `userId` (Firebase UID), `name`, `age`, `interests` (JSON text), `defaultStoryLength`, `tone`, `createdAt`, `updatedAt`
-- **savedStories** — `id`, `userId`, `childId` (nullable FK to children.id), `childName`, `emoji`, `title`, `story`, `interests`, `createdAt`
+- **savedStories** — `id`, `userId`, `childId` (nullable FK to children.id), `seriesId`, `episodeNumber`, `childName`, `emoji`, `title`, `story`, `storySummary` (3–5 sentence AI summary), `interests`, `createdAt`
+- **series** — `id`, `userId`, `childId`, `title`, `theme`, `createdAt`, `updatedAt`
+- **story_memory** — `id`, `userId`, `childId` (required), `seriesId` (nullable — series-specific vs child-wide), `mainCharacters` (JSON), `sideCharacters` (JSON), `locations` (JSON), `themes` (JSON text array), `tonePreferences` (JSON text array), `updatedAt`
 - **streaks** — `id`, `userId`, `clientId`, `lastActivityDate`, `streakCount`, `updatedAt`
 - **preferences** — per-user fallback preferences (userId, childName, age, interests, storyLength)
 - **voiceProfiles** — clientId → ElevenLabs voiceId/voiceName
@@ -67,6 +69,28 @@ Children's bedtime story generator with:
 - `POST /api/voice-tts` — streams ElevenLabs TTS audio (`eleven_multilingual_v2`) using the cloned voice
 - Requires `ELEVENLABS_API_KEY` secret (stored in Replit Secrets — **not** using the Replit ElevenLabs integration connector, which was dismissed by the user)
 - Frontend: `useVoiceProfile` hook + `VoiceUploadSection` component (consent UI, drag-and-drop) + `MyVoicePlayer` (shown below the standard Read Aloud player when a voice is active)
+
+### Story Memory System
+
+After each story is generated or continued, AI automatically extracts and persists characters, locations, and themes into `story_memory`. On the next story/continuation, this memory is injected into the prompt so narratives stay consistent across episodes.
+
+**Memory scope**: one record per `(userId, childId, seriesId)` tuple. `seriesId = null` = child-wide default memory.
+
+**Backend files**:
+- `artifacts/api-server/src/routes/memory.ts` — CRUD routes + `extractMemoryFromStory()` (AI extraction), `upsertMemoryAfterStory()` (called fire-and-forget after generation), `loadMemoryForPrompt()` (injects into prompt)
+- `artifacts/api-server/src/routes/story.ts` — calls `loadMemoryForPrompt` before generating and `upsertMemoryAfterStory` after; returns `summary` field on every story response
+- `lib/db/src/schema/storyMemory.ts` — Drizzle table definition for `story_memory`
+
+**API routes** (all `requireAuth`):
+- `GET /api/memory?childId=&seriesId=` — get memory records for a child/series
+- `PUT /api/memory` — upsert memory (manual override)
+- `DELETE /api/memory?childId=&seriesId=` — clear memory
+
+**Frontend**:
+- `artifacts/story-app/src/hooks/useMemory.ts` — React hook for fetching/updating/clearing memory (uses Firebase token)
+- `artifacts/story-app/src/components/StoryMemoryPanel.tsx` — collapsible panel shown in the story form (after SeriesPicker) that displays characters, side characters, locations, themes, tone preferences with tooltips and clear/refresh actions
+
+**Story summary**: every story response now includes a `summary` field (3–5 sentences, AI-generated). Saved to `saved_stories.story_summary` and used instead of truncated story text for `continue-story` context.
 
 ### Key model names
 - Story text: `gpt-4o-mini`

@@ -40,6 +40,11 @@ export const PostGenerateStoryBody = zod.object({
     .enum(["calm", "exciting", "silly", "adventurous", "magical"])
     .optional()
     .describe("Tone of the story"),
+  childId: zod
+    .number()
+    .optional()
+    .describe("Child profile ID for memory lookup"),
+  seriesId: zod.number().optional().describe("Series ID for memory lookup"),
 });
 
 export const PostGenerateStoryResponse = zod.object({
@@ -59,24 +64,15 @@ export const GetSavedStoriesResponseItem = zod.object({
   emoji: zod.string(),
   title: zod.string(),
   story: zod.string(),
-  summary: zod
+  storySummary: zod
     .string()
     .nullish()
-    .describe("Short 3-5 sentence summary of the story"),
+    .describe("Short summary stored with the story"),
   interests: zod.string(),
   createdAt: zod.string(),
-  childId: zod
-    .number()
-    .nullish()
-    .describe("ID of the child profile this story is linked to"),
-  seriesId: zod
-    .number()
-    .nullish()
-    .describe("ID of the series this story belongs to"),
-  episodeNumber: zod
-    .number()
-    .nullish()
-    .describe("Episode number within the series"),
+  childId: zod.number().nullish(),
+  seriesId: zod.number().nullish(),
+  episodeNumber: zod.number().nullish(),
 });
 export const GetSavedStoriesResponse = zod.array(GetSavedStoriesResponseItem);
 
@@ -89,10 +85,10 @@ export const PostSavedStoriesBody = zod.object({
   emoji: zod.string(),
   title: zod.string(),
   story: zod.string(),
-  summary: zod
+  storySummary: zod
     .string()
     .optional()
-    .describe("Short 3-5 sentence summary of the story"),
+    .describe("Short 3-5 sentence summary for use in next episode"),
   interests: zod.string().describe("Comma-separated interests"),
   childId: zod
     .number()
@@ -261,5 +257,132 @@ export const DeleteVoiceQueryParams = zod.object({
 });
 
 export const DeleteVoiceResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get story memory for a child or series
+ */
+export const GetMemoryQueryParams = zod.object({
+  childId: zod.coerce.number(),
+  seriesId: zod.coerce.number().optional(),
+});
+
+export const GetMemoryResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  childId: zod.number(),
+  seriesId: zod.number().nullish(),
+  mainCharacters: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe("Main recurring characters"),
+  sideCharacters: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe("Supporting characters"),
+  locations: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe("Settings and locations"),
+  themes: zod.array(zod.string()).describe("Recurring story themes"),
+  tonePreferences: zod
+    .array(zod.string())
+    .describe("Observed tone preferences"),
+  updatedAt: zod.string(),
+});
+export const GetMemoryResponse = zod.array(GetMemoryResponseItem);
+
+/**
+ * @summary Upsert story memory for a child or series
+ */
+export const PutMemoryBody = zod.object({
+  childId: zod.number(),
+  seriesId: zod.number().nullish(),
+  mainCharacters: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .optional(),
+  sideCharacters: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .optional(),
+  locations: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .optional(),
+  themes: zod.array(zod.string()).optional(),
+  tonePreferences: zod.array(zod.string()).optional(),
+});
+
+export const PutMemoryResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  childId: zod.number(),
+  seriesId: zod.number().nullish(),
+  mainCharacters: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe("Main recurring characters"),
+  sideCharacters: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe("Supporting characters"),
+  locations: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string().optional(),
+      }),
+    )
+    .describe("Settings and locations"),
+  themes: zod.array(zod.string()).describe("Recurring story themes"),
+  tonePreferences: zod
+    .array(zod.string())
+    .describe("Observed tone preferences"),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete story memory for a child or series
+ */
+export const DeleteMemoryQueryParams = zod.object({
+  childId: zod.coerce.number(),
+  seriesId: zod.coerce.number().optional(),
+});
+
+export const DeleteMemoryResponse = zod.object({
   success: zod.boolean(),
 });

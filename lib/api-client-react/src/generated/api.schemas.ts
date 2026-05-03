@@ -61,6 +61,10 @@ export interface GenerateStoryRequest {
   storyLength?: GenerateStoryRequestStoryLength;
   /** Tone of the story */
   tone?: GenerateStoryRequestTone;
+  /** Child profile ID for memory lookup */
+  childId?: number;
+  /** Series ID for memory lookup */
+  seriesId?: number;
 }
 
 export interface GenerateStoryResponse {
@@ -79,8 +83,8 @@ export interface SaveStoryRequest {
   emoji: string;
   title: string;
   story: string;
-  /** Short 3-5 sentence summary of the story */
-  summary?: string;
+  /** Short 3-5 sentence summary for use in next episode */
+  storySummary?: string;
   /** Comma-separated interests */
   interests: string;
   /** ID of the child profile to link this story to */
@@ -98,27 +102,58 @@ export interface SavedStory {
   title: string;
   story: string;
   /**
-   * Short 3-5 sentence summary of the story
+   * Short summary stored with the story
    * @nullable
    */
-  summary?: string | null;
+  storySummary?: string | null;
   interests: string;
   createdAt: string;
-  /**
-   * ID of the child profile this story is linked to
-   * @nullable
-   */
+  /** @nullable */
   childId?: number | null;
-  /**
-   * ID of the series this story belongs to
-   * @nullable
-   */
+  /** @nullable */
   seriesId?: number | null;
-  /**
-   * Episode number within the series
-   * @nullable
-   */
+  /** @nullable */
   episodeNumber?: number | null;
+}
+
+export interface MemoryCharacter {
+  name: string;
+  description?: string;
+}
+
+export interface MemoryLocation {
+  name: string;
+  description?: string;
+}
+
+export interface StoryMemory {
+  id: number;
+  userId: string;
+  childId: number;
+  /** @nullable */
+  seriesId?: number | null;
+  /** Main recurring characters */
+  mainCharacters: MemoryCharacter[];
+  /** Supporting characters */
+  sideCharacters: MemoryCharacter[];
+  /** Settings and locations */
+  locations: MemoryLocation[];
+  /** Recurring story themes */
+  themes: string[];
+  /** Observed tone preferences */
+  tonePreferences: string[];
+  updatedAt: string;
+}
+
+export interface UpsertMemoryRequest {
+  childId: number;
+  /** @nullable */
+  seriesId?: number | null;
+  mainCharacters?: MemoryCharacter[];
+  sideCharacters?: MemoryCharacter[];
+  locations?: MemoryLocation[];
+  themes?: string[];
+  tonePreferences?: string[];
 }
 
 export interface StorySeries {
@@ -210,4 +245,14 @@ export type GetVoiceParams = {
 
 export type DeleteVoiceParams = {
   clientId: string;
+};
+
+export type GetMemoryParams = {
+  childId: number;
+  seriesId?: number;
+};
+
+export type DeleteMemoryParams = {
+  childId: number;
+  seriesId?: number;
 };
