@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon, Star, RefreshCw, BookMarked, Trash2,
   ChevronDown, ChevronUp, Sparkles,
-  Play, Pause, Volume2, Loader2, VolumeX,
+  Play, Pause, Volume2, Loader2, VolumeX, Printer,
 } from "lucide-react";
 import {
   useGenerateStory,
@@ -379,7 +379,7 @@ function SavedStoryCard({
 
 export default function Home() {
   const [generatedStory, setGeneratedStory] = useState<{
-    title: string; story: string; emoji: string;
+    title: string; story: string; emoji: string; childName: string;
   } | null>(null);
   const [savedThisSession, setSavedThisSession] = useState(false);
   const [pendingInterests, setPendingInterests] = useState<string>("");
@@ -406,7 +406,7 @@ export default function Home() {
       { data: { childName: values.childName, age: values.age, interests: values.interests as GenerateStoryRequestInterestsItem[] } },
       {
         onSuccess: (result) => {
-          setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji });
+          setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji, childName: values.childName });
           recordActivity();
         },
       }
@@ -440,6 +440,8 @@ export default function Home() {
     generateStoryMutation.reset();
     form.reset();
   };
+
+  const handlePrint = () => window.print();
 
   const paragraphs = generatedStory?.story.split(/\n\n+/).map((p) => p.trim()).filter(Boolean) ?? [];
 
@@ -629,6 +631,13 @@ export default function Home() {
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                      <Button variant="outline" size="lg" onClick={handlePrint} className="rounded-full px-8 font-serif border-white/15 hover:border-white/30 hover:bg-white/5 transition-colors" data-testid="button-print">
+                        <Printer className="w-4 h-4 mr-2" />
+                        Print Story
+                      </Button>
+                    </motion.div>
+
+                    <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
                       <Button variant="outline" size="lg" onClick={handleReset} className="rounded-full px-8 font-serif border-white/15 hover:border-primary/40 hover:bg-primary/10 transition-colors" data-testid="button-reset">
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Another Story
@@ -641,6 +650,31 @@ export default function Home() {
           )}
 
         </AnimatePresence>
+
+        {/* ── PRINT AREA (hidden in browser, revealed by @media print) ── */}
+        {generatedStory && (
+          <div id="story-print-area" aria-hidden="true">
+            <div className="print-page">
+              <span className="print-corner print-corner-tl">★</span>
+              <span className="print-corner print-corner-tr">★</span>
+              <span className="print-corner print-corner-bl">★</span>
+              <span className="print-corner print-corner-br">★</span>
+
+              <div className="print-emoji">{generatedStory.emoji}</div>
+              <h1 className="print-title">{generatedStory.title}</h1>
+              <p className="print-subtitle">A bedtime story for {generatedStory.childName}</p>
+              <div className="print-divider">✦ &nbsp; ─────── &nbsp; ✦ &nbsp; ─────── &nbsp; ✦</div>
+
+              <div className="print-story">
+                {paragraphs.map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
+
+              <div className="print-footer">✦ &nbsp; Dreamtime Stories &nbsp; ✦</div>
+            </div>
+          </div>
+        )}
 
         {/* ── SAVED STORIES SECTION ── */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="mt-10">

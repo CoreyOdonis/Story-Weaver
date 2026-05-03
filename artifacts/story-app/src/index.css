@@ -271,6 +271,120 @@
   }
 }
 
+/* ── Print styles ── */
+@page {
+  size: A4 portrait;
+  margin: 14mm 16mm;
+}
+
+@media print {
+  /* Hide the entire app UI */
+  body * { visibility: hidden !important; }
+
+  /* Reveal only the print area */
+  #story-print-area,
+  #story-print-area * { visibility: visible !important; }
+
+  #story-print-area {
+    position: fixed;
+    inset: 0;
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: center;
+    background: #fff !important;
+  }
+
+  .print-page {
+    position: relative;
+    width: 100%;
+    max-width: 160mm;
+    padding: 12mm 14mm 10mm;
+    border: 3pt double #2a2a2a;
+    outline: 6pt solid #fff;
+    outline-offset: -10pt;
+    box-shadow: inset 0 0 0 9pt #2a2a2a;
+    background: #fff !important;
+    font-family: 'Lora', Georgia, serif;
+    color: #1a1a1a;
+  }
+
+  /* Corner star ornaments */
+  .print-corner {
+    position: absolute;
+    font-size: 14pt;
+    color: #2a2a2a;
+    line-height: 1;
+  }
+  .print-corner-tl { top:  4pt; left:  4pt; }
+  .print-corner-tr { top:  4pt; right: 4pt; }
+  .print-corner-bl { bottom: 4pt; left:  4pt; }
+  .print-corner-br { bottom: 4pt; right: 4pt; }
+
+  /* Header */
+  .print-emoji {
+    text-align: center;
+    font-size: 48pt;
+    line-height: 1;
+    margin-bottom: 6pt;
+  }
+
+  .print-title {
+    font-family: 'Baloo 2', cursive;
+    font-size: 22pt;
+    font-weight: 700;
+    text-align: center;
+    color: #1a1a1a;
+    margin: 0 0 4pt;
+    line-height: 1.2;
+  }
+
+  .print-subtitle {
+    font-family: 'Baloo 2', cursive;
+    font-size: 11pt;
+    text-align: center;
+    color: #555;
+    margin: 0 0 8pt;
+    letter-spacing: 0.02em;
+  }
+
+  .print-divider {
+    text-align: center;
+    color: #888;
+    font-size: 10pt;
+    letter-spacing: 0.15em;
+    margin-bottom: 10pt;
+    border-top: 0.5pt solid #ccc;
+    border-bottom: 0.5pt solid #ccc;
+    padding: 3pt 0;
+  }
+
+  /* Story body */
+  .print-story p {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 13pt;
+    line-height: 1.9;
+    color: #1a1a1a;
+    margin: 0 0 10pt;
+    text-align: justify;
+    hyphens: auto;
+  }
+
+  /* Footer */
+  .print-footer {
+    text-align: center;
+    font-family: 'Baloo 2', cursive;
+    font-size: 9pt;
+    color: #888;
+    letter-spacing: 0.12em;
+    margin-top: 10pt;
+    padding-top: 6pt;
+    border-top: 0.5pt solid #ccc;
+  }
+}
+
+/* Hide the print area in normal view */
+#story-print-area { display: none; }
+
 @layer utilities {
   .font-story { font-family: var(--app-font-story); }
 
