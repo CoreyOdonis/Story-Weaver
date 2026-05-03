@@ -18,6 +18,7 @@ import type {
 
 import type {
   DeleteResponse,
+  DeleteVoiceResponse,
   ErrorResponse,
   GenerateIllustrationsRequest,
   GenerateIllustrationsResponse,
@@ -30,6 +31,7 @@ import type {
   StreakActivityRequest,
   StreakData,
   StreakResult,
+  VoiceProfileResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -723,4 +725,176 @@ export const useRecordStreakActivity = <
   TContext
 > => {
   return useMutation(getRecordStreakActivityMutationOptions(options));
+};
+
+/**
+ * @summary Get voice profile for a client
+ */
+export const getGetVoiceProfileUrl = (clientId: string) => {
+  return `/api/voice/${clientId}`;
+};
+
+export const getVoiceProfile = async (
+  clientId: string,
+  options?: RequestInit,
+): Promise<VoiceProfileResponse> => {
+  return customFetch<VoiceProfileResponse>(getGetVoiceProfileUrl(clientId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetVoiceProfileQueryKey = (clientId: string) => {
+  return [`/api/voice/${clientId}`] as const;
+};
+
+export const getGetVoiceProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getVoiceProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  clientId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVoiceProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetVoiceProfileQueryKey(clientId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getVoiceProfile>>> = ({
+    signal,
+  }) => getVoiceProfile(clientId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!clientId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getVoiceProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetVoiceProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getVoiceProfile>>
+>;
+export type GetVoiceProfileQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get voice profile for a client
+ */
+
+export function useGetVoiceProfile<
+  TData = Awaited<ReturnType<typeof getVoiceProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  clientId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVoiceProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetVoiceProfileQueryOptions(clientId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a voice profile
+ */
+export const getDeleteVoiceProfileUrl = (clientId: string) => {
+  return `/api/voice/${clientId}`;
+};
+
+export const deleteVoiceProfile = async (
+  clientId: string,
+  options?: RequestInit,
+): Promise<DeleteVoiceResponse> => {
+  return customFetch<DeleteVoiceResponse>(getDeleteVoiceProfileUrl(clientId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVoiceProfileMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVoiceProfile>>,
+    TError,
+    { clientId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVoiceProfile>>,
+  TError,
+  { clientId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteVoiceProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVoiceProfile>>,
+    { clientId: string }
+  > = (props) => {
+    const { clientId } = props ?? {};
+
+    return deleteVoiceProfile(clientId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVoiceProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVoiceProfile>>
+>;
+
+export type DeleteVoiceProfileMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a voice profile
+ */
+export const useDeleteVoiceProfile = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVoiceProfile>>,
+    TError,
+    { clientId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVoiceProfile>>,
+  TError,
+  { clientId: string },
+  TContext
+> => {
+  return useMutation(getDeleteVoiceProfileMutationOptions(options));
 };

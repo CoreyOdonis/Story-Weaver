@@ -33,6 +33,8 @@ import { Badge } from "@/components/ui/badge";
 import { useReadAloud } from "@/hooks/useReadAloud";
 import { useStreak } from "@/hooks/useStreak";
 import { usePdfExport } from "@/hooks/usePdfExport";
+import { useVoiceProfile } from "@/hooks/useVoiceProfile";
+import { VoiceUploadSection, MyVoicePlayer } from "@/components/VoiceUploadSection";
 
 const INTEREST_OPTIONS: { id: GenerateStoryRequestInterestsItem; label: string; icon: string }[] = [
   { id: "dinosaurs", label: "Dinosaurs", icon: "🦕" },
@@ -389,6 +391,7 @@ export default function Home() {
   const queryClient = useQueryClient();
   const { streakCount, justIncreased, recordActivity } = useStreak();
   const { download: downloadPdf, status: pdfStatus, reset: resetPdf } = usePdfExport();
+  const voiceProfile = useVoiceProfile();
   const generateStoryMutation = useGenerateStory();
   const saveStoryMutation = useSaveStory();
   const deleteStoryMutation = useDeleteSavedStory();
@@ -614,6 +617,15 @@ export default function Home() {
                   {/* Read Aloud Player */}
                   <ReadAloudPlayer storyText={generatedStory.story} />
 
+                  {/* My Voice Player — only when a cloned voice is active */}
+                  {voiceProfile.status === "active" && voiceProfile.voiceId && voiceProfile.voiceName && (
+                    <MyVoicePlayer
+                      storyText={generatedStory.story}
+                      voiceId={voiceProfile.voiceId}
+                      voiceName={voiceProfile.voiceName}
+                    />
+                  )}
+
                   {/* Story text */}
                   <div className="space-y-5 mt-8 mb-10" data-testid="text-story-content">
                     {paragraphs.map((para, i) => (
@@ -772,6 +784,9 @@ export default function Home() {
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* ── VOICE UPLOAD SECTION ── */}
+        <VoiceUploadSection />
 
       </div>
     </div>

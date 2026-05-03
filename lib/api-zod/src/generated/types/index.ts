@@ -7,6 +7,7 @@
  */
 
 export * from "./deleteResponse";
+export * from "./deleteVoiceResponse";
 export * from "./errorResponse";
 export * from "./generateIllustrationsRequest";
 export * from "./generateIllustrationsResponse";
@@ -20,3 +21,4 @@ export * from "./saveStoryRequest";
 export * from "./streakActivityRequest";
 export * from "./streakData";
 export * from "./streakResult";
+export * from "./voiceProfileResponse";

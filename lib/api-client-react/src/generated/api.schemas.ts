@@ -100,6 +100,17 @@ export interface GenerateIllustrationsResponse {
   images: string[];
 }
 
+export interface VoiceProfileResponse {
+  /** ElevenLabs voice ID */
+  voiceId: string;
+  /** Display name for the cloned voice */
+  voiceName: string;
+}
+
+export interface DeleteVoiceResponse {
+  success: boolean;
+}
+
 export interface ErrorResponse {
   error: string;
 }

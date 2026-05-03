@@ -131,3 +131,26 @@ export const RecordStreakActivityResponse = zod.object({
     .boolean()
     .describe("Whether the streak increased compared to the previous value"),
 });
+
+/**
+ * @summary Get voice profile for a client
+ */
+export const GetVoiceProfileParams = zod.object({
+  clientId: zod.coerce.string(),
+});
+
+export const GetVoiceProfileResponse = zod.object({
+  voiceId: zod.string().describe("ElevenLabs voice ID"),
+  voiceName: zod.string().describe("Display name for the cloned voice"),
+});
+
+/**
+ * @summary Delete a voice profile
+ */
+export const DeleteVoiceProfileParams = zod.object({
+  clientId: zod.coerce.string(),
+});
+
+export const DeleteVoiceProfileResponse = zod.object({
+  success: zod.boolean(),
+});

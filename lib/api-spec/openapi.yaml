@@ -14,6 +14,8 @@ tags:
     description: Story generation and storage operations
   - name: streak
     description: Daily streak tracking
+  - name: voice
+    description: Voice cloning and custom narration
 paths:
   /healthz:
     get:
@@ -198,6 +200,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /voice/{clientId}:
+    get:
+      operationId: getVoiceProfile
+      tags: [voice]
+      summary: Get voice profile for a client
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Voice profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceProfileResponse"
+        "404":
+          description: No voice profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteVoiceProfile
+      tags: [voice]
+      summary: Delete a voice profile
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteVoiceResponse"
+        "404":
+          description: No voice profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: ElevenLabs deletion failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -359,6 +414,25 @@ components:
           description: Base64-encoded PNG image data for each illustrated scene
       required:
         - images
+    VoiceProfileResponse:
+      type: object
+      properties:
+        voiceId:
+          type: string
+          description: ElevenLabs voice ID
+        voiceName:
+          type: string
+          description: Display name for the cloned voice
+      required:
+        - voiceId
+        - voiceName
+    DeleteVoiceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
     ErrorResponse:
       type: object
       properties:
