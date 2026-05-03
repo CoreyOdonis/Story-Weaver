@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const savedStoriesTable = pgTable("saved_stories", {
   id: serial("id").primaryKey(),
+  userId: text("user_id"),
   childName: text("child_name").notNull(),
   emoji: text("emoji").notNull(),
   title: text("title").notNull(),

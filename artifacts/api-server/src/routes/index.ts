@@ -7,10 +7,12 @@ import streakRouter from "./streak";
 import illustrationsRouter from "./illustrations";
 import voiceRouter from "./voice";
 import authRouter from "./auth";
+import preferencesRouter from "./preferences";
 
 const router: IRouter = Router();
 
 router.use(authRouter);
+router.use(preferencesRouter);
 router.use(healthRouter);
 router.use(storyRouter);
 router.use(savedStoriesRouter);

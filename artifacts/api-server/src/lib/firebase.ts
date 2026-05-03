@@ -36,3 +36,11 @@ export function getFirebaseAuth(): Auth {
   }
   return firebaseAuth;
 }
+
+export function tryGetFirebaseAuth(): Auth | null {
+  try {
+    return getFirebaseAuth();
+  } catch {
+    return null;
+  }
+}

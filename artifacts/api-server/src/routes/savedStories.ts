@@ -1,14 +1,18 @@
 import { Router } from "express";
 import { db, savedStoriesTable } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { optionalAuth } from "../middleware/optionalAuth";
+import type { AuthRequest } from "../middleware/requireAuth";
 
 const router = Router();
 
-router.get("/saved-stories", async (req, res) => {
+router.get("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = req.firebaseUid ?? null;
     const stories = await db
       .select()
       .from(savedStoriesTable)
+      .where(userId ? eq(savedStoriesTable.userId, userId) : isNull(savedStoriesTable.userId))
       .orderBy(desc(savedStoriesTable.createdAt));
     res.json(stories);
   } catch (err) {
@@ -17,7 +21,7 @@ router.get("/saved-stories", async (req, res) => {
   }
 });
 
-router.post("/saved-stories", async (req, res) => {
+router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
   const { childName, emoji, title, story, interests } = req.body as {
     childName?: string;
     emoji?: string;
@@ -34,7 +38,14 @@ router.post("/saved-stories", async (req, res) => {
   try {
     const [saved] = await db
       .insert(savedStoriesTable)
-      .values({ childName, emoji, title, story, interests })
+      .values({
+        userId: req.firebaseUid ?? null,
+        childName,
+        emoji,
+        title,
+        story,
+        interests,
+      })
       .returning();
     res.status(201).json(saved);
   } catch (err) {
@@ -43,7 +54,7 @@ router.post("/saved-stories", async (req, res) => {
   }
 });
 
-router.delete("/saved-stories/:id", async (req, res) => {
+router.delete("/saved-stories/:id", optionalAuth, async (req: AuthRequest, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid story ID." });
@@ -51,13 +62,19 @@ router.delete("/saved-stories/:id", async (req, res) => {
   }
 
   try {
+    const userId = req.firebaseUid ?? null;
+
+    const whereClause = userId
+      ? and(eq(savedStoriesTable.id, id), eq(savedStoriesTable.userId, userId))
+      : and(eq(savedStoriesTable.id, id), isNull(savedStoriesTable.userId));
+
     const deleted = await db
       .delete(savedStoriesTable)
-      .where(eq(savedStoriesTable.id, id))
+      .where(whereClause)
       .returning();
 
     if (deleted.length === 0) {
-      res.status(404).json({ error: "Story not found." });
+      res.status(404).json({ error: "Story not found or access denied." });
       return;
     }
 
