@@ -30,10 +30,21 @@ Children's bedtime story generator with:
 1. Backend (`artifacts/api-server/src/routes/illustrations.ts`): splits story into beginning/middle/end paragraphs → GPT generates 3 vivid image prompts → `gpt-image-1` generates images in parallel → returns base64 PNG strings
 2. Frontend (`artifacts/story-app/src/hooks/usePdfExport.ts`): converts PNG→JPEG via canvas → `jsPDF` builds A4 PDF → auto-downloads
 
+### Voice Cloning ("Play in My Voice")
+- Users upload a 30–60 s audio sample (MP3/WAV/M4A/OGG/WebM)
+- Backend (`artifacts/api-server/src/routes/voice.ts`) calls ElevenLabs API to clone the voice and stores the resulting `voiceId` in the `voiceProfiles` table keyed by anonymous `clientId`
+- `POST /api/voice/upload` — multipart upload (multer), clones voice via ElevenLabs, persists profile
+- `GET /api/voice/:clientId` — returns `{ voiceId, voiceName }` or 404
+- `DELETE /api/voice/:clientId` — deletes voice from ElevenLabs + DB
+- `POST /api/voice-tts` — streams ElevenLabs TTS audio (`eleven_multilingual_v2`) using the cloned voice
+- Requires `ELEVENLABS_API_KEY` secret (stored in Replit Secrets — **not** using the Replit ElevenLabs integration connector, which was dismissed by the user)
+- Frontend: `useVoiceProfile` hook + `VoiceUploadSection` component (consent UI, drag-and-drop) + `MyVoicePlayer` (shown below the standard Read Aloud player when a voice is active)
+
 ### Key model names
 - Story text: `gpt-4o-mini`
 - TTS audio: `gpt-audio` + `nova` voice
 - Images: `gpt-image-1` at 1024×1024
+- Voice cloning + TTS: ElevenLabs `eleven_multilingual_v2`
 
 ## Key Commands
 
