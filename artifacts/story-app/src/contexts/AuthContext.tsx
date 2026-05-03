@@ -33,14 +33,33 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function apiRequest(path: string, init?: RequestInit) {
+  const baseUrl = BASE_URL.endsWith("/") ? BASE_URL : `${BASE_URL}/`;
+  return fetch(`${baseUrl}api${path}`, {
+    credentials: "include",
+    ...init,
+  });
+}
+
 async function syncUserWithBackend(user: User): Promise<UserProfile | null> {
   try {
-    const idToken = await user.getIdToken();
-    const baseUrl = BASE_URL.endsWith("/") ? BASE_URL : `${BASE_URL}/`;
-    const res = await fetch(`${baseUrl}api/auth/login`, {
+    const idToken = await user.getIdToken(true);
+    const res = await apiRequest("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as UserProfile;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBackendUser(idToken: string): Promise<UserProfile | null> {
+  try {
+    const res = await apiRequest("/auth/user", {
+      headers: { Authorization: `Bearer ${idToken}` },
     });
     if (!res.ok) return null;
     return (await res.json()) as UserProfile;
@@ -61,12 +80,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
-      if (user) {
-        const p = await syncUserWithBackend(user);
-        setProfile(p);
-      } else {
+      if (!user) {
         setProfile(null);
+        setLoading(false);
+        return;
       }
+
+      const idToken = await user.getIdToken().catch(() => null);
+      if (!idToken) {
+        await firebaseSignOut(auth).catch(() => undefined);
+        setFirebaseUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      const backendUser = await fetchBackendUser(idToken);
+      if (backendUser) {
+        setProfile(backendUser);
+        setLoading(false);
+        return;
+      }
+
+      const syncedUser = await syncUserWithBackend(user);
+      if (syncedUser) {
+        setProfile(syncedUser);
+        setLoading(false);
+        return;
+      }
+
+      await firebaseSignOut(auth).catch(() => undefined);
+      setFirebaseUser(null);
+      setProfile(null);
       setLoading(false);
     });
     return () => unsub();
