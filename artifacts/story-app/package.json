@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "firebase": "^12.12.1",
     "jspdf": "^4.2.1"
   }
 }

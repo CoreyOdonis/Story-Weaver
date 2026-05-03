@@ -6,9 +6,11 @@ import ttsRouter from "./tts";
 import streakRouter from "./streak";
 import illustrationsRouter from "./illustrations";
 import voiceRouter from "./voice";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
+router.use(authRouter);
 router.use(healthRouter);
 router.use(storyRouter);
 router.use(savedStoriesRouter);
