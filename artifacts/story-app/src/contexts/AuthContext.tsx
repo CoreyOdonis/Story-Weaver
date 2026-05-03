@@ -118,7 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    if (!auth || !googleProvider) return;
+    if (!auth || !googleProvider) {
+      throw new Error("Google sign-in is not configured. Set the VITE_FIREBASE_* env vars in the app.");
+    }
     const result = await signInWithPopup(auth, googleProvider);
     const p = await syncUserWithBackend(result.user);
     setProfile(p);
