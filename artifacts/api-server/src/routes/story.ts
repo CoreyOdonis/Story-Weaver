@@ -32,9 +32,9 @@ router.post("/generate-story", async (req, res) => {
     return;
   }
 
-  const { childName, age, interests, length = "5min" } = result.data;
+  const { childName, age, interests, storyLength = "5min" } = result.data;
   const interestsList = interests.join(", ");
-  const wordCount = LENGTH_MAP[length] ?? LENGTH_MAP["5min"];
+  const wordCount = LENGTH_MAP[storyLength] ?? LENGTH_MAP["5min"];
 
   try {
     const completion = await openai.chat.completions.create({

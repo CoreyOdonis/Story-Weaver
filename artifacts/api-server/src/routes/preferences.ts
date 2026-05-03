@@ -10,6 +10,7 @@ const PreferencesBody = z.object({
   childName: z.string().max(50).nullable().optional(),
   age: z.number().int().min(1).max(12).nullable().optional(),
   interests: z.array(z.string()).optional(),
+  storyLength: z.enum(["5min", "10min", "15min"]).optional(),
 });
 
 router.get("/preferences", requireAuth, async (req: AuthRequest, res) => {
@@ -21,7 +22,7 @@ router.get("/preferences", requireAuth, async (req: AuthRequest, res) => {
       .limit(1);
 
     if (!prefs) {
-      res.json({ childName: null, age: null, interests: [] });
+      res.json({ childName: null, age: null, interests: [], storyLength: null });
       return;
     }
 
@@ -29,6 +30,7 @@ router.get("/preferences", requireAuth, async (req: AuthRequest, res) => {
       childName: prefs.childName ?? null,
       age: prefs.age ?? null,
       interests: prefs.interests ? (JSON.parse(prefs.interests) as string[]) : [],
+      storyLength: prefs.storyLength ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch preferences");
@@ -43,7 +45,7 @@ router.put("/preferences", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const { childName, age, interests } = result.data;
+  const { childName, age, interests, storyLength } = result.data;
 
   try {
     const [saved] = await db
@@ -53,6 +55,7 @@ router.put("/preferences", requireAuth, async (req: AuthRequest, res) => {
         childName: childName ?? null,
         age: age ?? null,
         interests: interests !== undefined ? JSON.stringify(interests) : null,
+        storyLength: storyLength ?? null,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -61,6 +64,7 @@ router.put("/preferences", requireAuth, async (req: AuthRequest, res) => {
           ...(childName !== undefined && { childName: childName ?? null }),
           ...(age !== undefined && { age: age ?? null }),
           ...(interests !== undefined && { interests: JSON.stringify(interests) }),
+          ...(storyLength !== undefined && { storyLength: storyLength ?? null }),
           updatedAt: new Date(),
         },
       })
@@ -70,6 +74,7 @@ router.put("/preferences", requireAuth, async (req: AuthRequest, res) => {
       childName: saved!.childName ?? null,
       age: saved!.age ?? null,
       interests: saved!.interests ? (JSON.parse(saved!.interests) as string[]) : [],
+      storyLength: saved!.storyLength ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to save preferences");

@@ -80,18 +80,17 @@ export default function Home() {
     defaultValues: { childName: "", age: 5, interests: [], length: "5min" },
   });
 
-  // Pre-fill form with saved preferences once when they load
   useEffect(() => {
     if (!preferences || prefsApplied) return;
     const patch: Partial<z.infer<typeof formSchema>> = {};
     if (preferences.childName) patch.childName = preferences.childName;
     if (preferences.age) patch.age = preferences.age;
     if (preferences.interests?.length) patch.interests = preferences.interests;
+    if (preferences.storyLength) patch.length = preferences.storyLength;
     if (Object.keys(patch).length > 0) form.reset({ ...form.getValues(), ...patch });
     setPrefsApplied(true);
   }, [preferences, prefsApplied, form]);
 
-  // Reset prefsApplied when user signs out so next sign-in re-applies
   useEffect(() => {
     if (!firebaseUser) setPrefsApplied(false);
   }, [firebaseUser]);
@@ -105,12 +104,12 @@ export default function Home() {
         onSuccess: (result) => {
           setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji, childName: values.childName });
           recordActivity();
-          // Persist preferences for next visit
           if (firebaseUser) {
             void savePreferences({
               childName: values.childName,
               age: values.age,
               interests: values.interests,
+              storyLength: values.length,
             });
           }
         },

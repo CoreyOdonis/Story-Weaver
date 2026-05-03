@@ -13,6 +13,7 @@ export interface UserPreferences {
   childName: string | null;
   age: number | null;
   interests: string[];
+  storyLength: "5min" | "10min" | "15min" | null;
 }
 
 async function getToken(): Promise<string | null> {
@@ -38,7 +39,6 @@ export function usePreferences() {
         setPreferences((await res.json()) as UserPreferences);
       }
     } catch {
-      // silently fail — preferences are a convenience, not critical
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,6 @@ export function usePreferences() {
         setPreferences((await res.json()) as UserPreferences);
       }
     } catch {
-      // silently fail
     }
   }, []);
 

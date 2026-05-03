@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    if (!auth || !googleProvider) throw new Error("Firebase not configured");
+    if (!auth || !googleProvider) return;
     const result = await signInWithPopup(auth, googleProvider);
     const p = await syncUserWithBackend(result.user);
     setProfile(p);

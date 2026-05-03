@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, savedStoriesTable } from "@workspace/db";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { optionalAuth } from "../middleware/optionalAuth";
 import type { AuthRequest } from "../middleware/requireAuth";
 
@@ -12,7 +12,7 @@ router.get("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
     const stories = await db
       .select()
       .from(savedStoriesTable)
-      .where(userId ? eq(savedStoriesTable.userId, userId) : isNull(savedStoriesTable.userId))
+      .where(userId ? or(eq(savedStoriesTable.userId, userId), isNull(savedStoriesTable.userId)) : isNull(savedStoriesTable.userId))
       .orderBy(desc(savedStoriesTable.createdAt));
     res.json(stories);
   } catch (err) {
@@ -55,8 +55,8 @@ router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
 });
 
 router.delete("/saved-stories/:id", optionalAuth, async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid story ID." });
     return;
   }

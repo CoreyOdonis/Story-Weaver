@@ -6,6 +6,7 @@ export const preferencesTable = pgTable("preferences", {
   childName: text("child_name"),
   age: integer("age"),
   interests: text("interests"),
+  storyLength: text("story_length"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
