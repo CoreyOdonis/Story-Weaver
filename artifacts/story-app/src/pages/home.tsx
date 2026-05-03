@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,6 +34,8 @@ import { useReadAloud } from "@/hooks/useReadAloud";
 import { useStreak } from "@/hooks/useStreak";
 import { usePdfExport } from "@/hooks/usePdfExport";
 
+const WORDS_PER_MINUTE = 180;
+
 const STORY_LENGTHS = [
   { value: "5min", label: "5 min", sublabel: "Quick tale" },
   { value: "10min", label: "10 min", sublabel: "Classic story" },
@@ -56,6 +58,7 @@ export default function Home() {
     childName: string;
   } | null>(null);
   const [pendingInterests, setPendingInterests] = useState<string>("");
+  const [storyProgress, setStoryProgress] = useState(0);
 
   const queryClient = useQueryClient();
   const { recordActivity } = useStreak();
@@ -94,10 +97,50 @@ export default function Home() {
   };
 
   const paragraphs = generatedStory?.story.split(/\n\n+/).map((p) => p.trim()).filter(Boolean) ?? [];
+  const estimatedReadMinutes = useMemo(() => {
+    if (!generatedStory?.story) return 5;
+    const words = generatedStory.story.trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
+  }, [generatedStory?.story]);
+
+  useEffect(() => {
+    if (!generatedStory) {
+      setStoryProgress(0);
+      return;
+    }
+
+    const updateProgress = () => {
+      const storyArea = document.getElementById("story-reading-area");
+      if (!storyArea) return;
+      const rect = storyArea.getBoundingClientRect();
+      const total = rect.height + window.innerHeight;
+      const scrolled = Math.min(total, Math.max(0, window.innerHeight - rect.top));
+      setStoryProgress(Math.max(0, Math.min(100, (scrolled / total) * 100)));
+    };
+
+    updateProgress();
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    return () => {
+      window.removeEventListener("scroll", updateProgress);
+      window.removeEventListener("resize", updateProgress);
+    };
+  }, [generatedStory]);
 
   return (
     <div className="min-h-[100dvh] w-full relative overflow-hidden flex flex-col items-center py-10 px-4 sm:px-8">
       <div className="relative z-10 w-full max-w-4xl mx-auto">
+        {generatedStory ? (
+          <div className="sticky top-0 z-30 mb-4 rounded-full bg-white/10 backdrop-blur-md border border-white/10 p-2">
+            <div className="flex items-center justify-between px-3 text-xs sm:text-sm text-white/80 font-medium">
+              <span>{estimatedReadMinutes} min read</span>
+              <span>{Math.round(storyProgress)}%</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${storyProgress}%` }} />
+            </div>
+          </div>
+        ) : null}
         <Card className="shadow-2xl border-white/10 relative overflow-hidden backdrop-blur-sm">
           <div className="p-8 sm:p-12">
             <Form {...form}>
@@ -170,6 +213,26 @@ export default function Home() {
             </Form>
           </div>
         </Card>
+      </div>
+      <div id="story-reading-area" className="w-full max-w-4xl mx-auto mt-8 story-reading-body">
+        {generatedStory ? (
+          <Card className="border-white/10 bg-card/90 backdrop-blur-sm">
+            <div className="p-6 sm:p-10">
+              <div className="mb-6 space-y-2">
+                <div className="text-sm text-muted-foreground">{estimatedReadMinutes} min read</div>
+                <h2 className="text-3xl sm:text-4xl font-serif leading-tight">{generatedStory.title}</h2>
+                <p className="text-sm text-muted-foreground">{generatedStory.childName}</p>
+              </div>
+              <div className="space-y-6 text-[1.08rem] sm:text-[1.15rem] leading-8 sm:leading-9 font-story">
+                {paragraphs.map((paragraph, index) => (
+                  <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-wrap">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ) : null}
       </div>
     </div>
   );
