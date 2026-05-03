@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import {
-  useGetVoiceProfile,
-  useDeleteVoiceProfile,
-  getGetVoiceProfileQueryKey,
-  getGetVoiceProfileQueryOptions,
+  useGetVoice,
+  useDeleteVoice,
+  getGetVoiceQueryKey,
+  getGetVoiceQueryOptions,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClientId } from "./useClientId";
@@ -34,15 +34,18 @@ export function useVoiceProfile(): VoiceProfileState {
   const [uploadStatus, setUploadStatus] = useState<VoiceUploadStatus>("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const { data, isLoading } = useGetVoiceProfile(clientId, {
-    query: {
-      queryKey: getGetVoiceProfileQueryKey(clientId),
-      enabled: !!clientId,
-      retry: false,
+  const { data, isLoading } = useGetVoice(
+    { clientId: clientId ?? "" },
+    {
+      query: {
+        queryKey: getGetVoiceQueryKey({ clientId: clientId ?? "" }),
+        enabled: !!clientId,
+        retry: false,
+      },
     },
-  });
+  );
 
-  const deleteProfileMutation = useDeleteVoiceProfile();
+  const deleteProfileMutation = useDeleteVoice();
 
   const upload = useCallback(
     async (file: File, name = "My Voice") => {
@@ -70,7 +73,7 @@ export function useVoiceProfile(): VoiceProfileState {
         }
 
         await queryClient.invalidateQueries({
-          queryKey: getGetVoiceProfileQueryKey(clientId),
+          queryKey: getGetVoiceQueryKey({ clientId }),
         });
         setUploadStatus("idle");
       } catch (err) {
@@ -85,9 +88,9 @@ export function useVoiceProfile(): VoiceProfileState {
 
   const remove = useCallback(async () => {
     if (!clientId) return;
-    await deleteProfileMutation.mutateAsync({ clientId });
+    await deleteProfileMutation.mutateAsync({ params: { clientId } });
     await queryClient.invalidateQueries({
-      queryKey: getGetVoiceProfileQueryKey(clientId),
+      queryKey: getGetVoiceQueryKey({ clientId }),
     });
   }, [clientId, deleteProfileMutation, queryClient]);
 

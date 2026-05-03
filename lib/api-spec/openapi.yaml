@@ -1,12 +1,25 @@
 openapi: 3.0.3
 info:
-  title: Dreamtime Stories API
-  version: 1.0.0
+  title: Api
+  version: 0.1.0
+
 paths:
+  /healthz:
+    get:
+      summary: Health check
+      description: Returns server health status
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
   /generate-story:
     post:
       summary: Generate a bedtime story
-      description: Generates a personalized bedtime story based on child's name, age, interests, and requested length
+      description: Generates a personalized bedtime story based on child's name, age, and interests
       requestBody:
         required: true
         content:
@@ -20,10 +33,159 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenerateStoryResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /saved-stories:
+    get:
+      summary: Get all saved stories
+      description: Returns all saved stories ordered by newest first
+      responses:
+        '200':
+          description: List of saved stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavedStory'
+    post:
+      summary: Save a story
+      description: Saves a generated story to the database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveStoryRequest'
+      responses:
+        '201':
+          description: Story saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedStory'
+
+  /saved-stories/{id}:
+    delete:
+      summary: Delete a saved story
+      description: Deletes a saved story by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+
+  /streak:
+    get:
+      summary: Get current streak
+      description: Returns the current streak for a given client ID
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Streak data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreakData'
+
+  /streak/activity:
+    post:
+      summary: Record daily activity
+      description: Records activity for today and updates the streak counter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StreakActivityRequest'
+      responses:
+        '200':
+          description: Updated streak
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreakResult'
+
+  /generate-illustrations:
+    post:
+      summary: Generate story illustrations
+      description: Generates soft watercolour illustrations for story scenes using AI image generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateIllustrationsRequest'
+      responses:
+        '200':
+          description: Illustrations generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateIllustrationsResponse'
+
+  /voice:
+    get:
+      summary: Get voice profile for a client
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Voice profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceProfileResponse'
+    delete:
+      summary: Delete a voice profile
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteVoiceResponse'
+
 components:
   schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
     GenerateStoryRequest:
       type: object
+      required: [childName, age, interests]
       properties:
         childName:
           type: string
@@ -35,29 +197,160 @@ components:
           description: The child's age
         interests:
           type: array
+          description: The child's interests
           items:
             type: string
             enum: [dinosaurs, space, princess, animals, cars, magic]
-          description: The child's interests
-        length:
+        storyLength:
           type: string
           enum: ["5min", "10min", "15min"]
-          default: "5min"
-          description: Requested story length
-      required:
-        - childName
-        - age
-        - interests
+          description: Desired reading length of the story
+        tone:
+          type: string
+          enum: [calm, exciting, silly, adventurous, magical]
+          description: Tone of the story
+
     GenerateStoryResponse:
       type: object
+      required: [title, story, emoji]
       properties:
+        title:
+          type: string
+          description: The story title
+        story:
+          type: string
+          description: The full story text
+        emoji:
+          type: string
+          description: A fun emoji that represents the story
+
+    SaveStoryRequest:
+      type: object
+      required: [childName, emoji, title, story, interests]
+      properties:
+        childName:
+          type: string
+        emoji:
+          type: string
         title:
           type: string
         story:
           type: string
+        interests:
+          type: string
+          description: Comma-separated interests
+        childId:
+          type: integer
+          description: ID of the child profile to link this story to
+
+    SavedStory:
+      type: object
+      required: [id, childName, emoji, title, story, interests, createdAt]
+      properties:
+        id:
+          type: integer
+        childName:
+          type: string
         emoji:
           type: string
-      required:
-        - title
-        - story
-        - emoji
+        title:
+          type: string
+        story:
+          type: string
+        interests:
+          type: string
+        createdAt:
+          type: string
+        childId:
+          type: integer
+          nullable: true
+          description: ID of the child profile this story is linked to
+
+    DeleteResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    StreakData:
+      type: object
+      required: [streakCount, lastActivityDate]
+      properties:
+        streakCount:
+          type: integer
+          description: Current streak count (0 if no activity yet)
+        lastActivityDate:
+          type: string
+          nullable: true
+          description: ISO date string of last activity (YYYY-MM-DD), or null
+
+    StreakActivityRequest:
+      type: object
+      required: [clientId]
+      properties:
+        clientId:
+          type: string
+
+    StreakResult:
+      type: object
+      required: [streakCount, increased]
+      properties:
+        streakCount:
+          type: integer
+          description: New streak count after recording activity
+        increased:
+          type: boolean
+          description: Whether the streak increased compared to the previous value
+
+    GenerateIllustrationsRequest:
+      type: object
+      required: [story, title, childName, emoji]
+      properties:
+        story:
+          type: string
+          description: Full story text
+        title:
+          type: string
+          description: Story title
+        childName:
+          type: string
+          description: Child's name
+        emoji:
+          type: string
+          description: Story emoji
+
+    GenerateIllustrationsResponse:
+      type: object
+      required: [images]
+      properties:
+        images:
+          type: array
+          items:
+            type: string
+          description: Base64-encoded PNG image data for each illustrated scene
+
+    VoiceProfileResponse:
+      type: object
+      required: [voiceId, voiceName]
+      properties:
+        voiceId:
+          type: string
+          description: ElevenLabs voice ID
+        voiceName:
+          type: string
+          description: Display name for the cloned voice
+
+    DeleteVoiceResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

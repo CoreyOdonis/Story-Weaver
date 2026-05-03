@@ -16,6 +16,34 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Database Schema
+
+Tables in PostgreSQL (managed via Drizzle ORM):
+
+- **users** — Firebase UID, name, email
+- **children** — `id`, `userId` (Firebase UID), `name`, `age`, `interests` (JSON text), `defaultStoryLength`, `tone`, `createdAt`, `updatedAt`
+- **savedStories** — `id`, `userId`, `childId` (nullable FK to children.id), `childName`, `emoji`, `title`, `story`, `interests`, `createdAt`
+- **streaks** — `id`, `userId`, `clientId`, `lastActivityDate`, `streakCount`, `updatedAt`
+- **preferences** — per-user fallback preferences (userId, childName, age, interests, storyLength)
+- **voiceProfiles** — clientId → ElevenLabs voiceId/voiceName
+
+### Children Profile API
+
+- `GET /api/children` — list all child profiles for the authenticated user (requireAuth)
+- `POST /api/children` — create a new child profile
+- `PUT /api/children/:id` — update a child profile (owner only)
+- `DELETE /api/children/:id` — delete a child profile (owner only)
+
+Child profile fields: `name`, `age`, `interests[]`, `defaultStoryLength` (5min/10min/15min), `tone` (calm/exciting/silly/adventurous/magical)
+
+### Frontend Child Profile UX
+
+- `useChildren` hook (`artifacts/story-app/src/hooks/useChildren.ts`) — CRUD for child profiles via fetch + Firebase auth token
+- `ChildProfileBar` component (`artifacts/story-app/src/components/ChildProfileBar.tsx`) — chip row shown when logged in; click to select/prefill form; pencil to edit; trash to delete; + to add new (dialog with name, age, interests, length, tone)
+- Selecting a child pre-fills the story form with their saved preferences
+- Stories are saved with `childId` linking them to the selected child profile
+- Story generation passes the child's preferred `tone` to the AI prompt
+
 ## App: Dreamtime Stories (`artifacts/story-app`)
 
 Children's bedtime story generator with:

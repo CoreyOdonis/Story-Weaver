@@ -15,7 +15,7 @@ import {
   useDeleteSavedStory,
   getGetSavedStoriesQueryKey,
 } from "@workspace/api-client-react";
-import type { GenerateStoryRequestInterestsItem } from "@workspace/api-client-react";
+import type { GenerateStoryRequestInterestsItem, GenerateStoryRequestTone } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -35,6 +35,9 @@ import { useStreak } from "@/hooks/useStreak";
 import { usePdfExport } from "@/hooks/usePdfExport";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useChildren } from "@/hooks/useChildren";
+import type { ChildProfile } from "@/hooks/useChildren";
+import { ChildProfileBar } from "@/components/ChildProfileBar";
 
 const WORDS_PER_MINUTE = 180;
 
@@ -61,9 +64,12 @@ export default function Home() {
   } | null>(null);
   const [pendingInterests, setPendingInterests] = useState<string>("");
   const [storyProgress, setStoryProgress] = useState(0);
+  const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  const [selectedTone, setSelectedTone] = useState<GenerateStoryRequestTone | null>(null);
 
   const { firebaseUser, profile, loading: authLoading, signInWithGoogle, signOut } = useAuth();
   const { preferences, savePreferences } = usePreferences();
+  const { children, createChild, updateChild, deleteChild } = useChildren();
   const [prefsApplied, setPrefsApplied] = useState(false);
 
   const queryClient = useQueryClient();
@@ -92,14 +98,42 @@ export default function Home() {
   }, [preferences, prefsApplied, form]);
 
   useEffect(() => {
-    if (!firebaseUser) setPrefsApplied(false);
+    if (!firebaseUser) {
+      setPrefsApplied(false);
+      setSelectedChildId(null);
+      setSelectedTone(null);
+    }
   }, [firebaseUser]);
+
+  const handleSelectChild = (child: ChildProfile | null) => {
+    if (!child) {
+      setSelectedChildId(null);
+      setSelectedTone(null);
+      return;
+    }
+    setSelectedChildId(child.id);
+    setSelectedTone((child.tone as GenerateStoryRequestTone) ?? null);
+    const patch: Partial<z.infer<typeof formSchema>> = {};
+    if (child.name) patch.childName = child.name;
+    if (child.age) patch.age = child.age;
+    if (child.interests?.length) patch.interests = child.interests;
+    if (child.defaultStoryLength) patch.length = child.defaultStoryLength;
+    form.reset({ ...form.getValues(), ...patch });
+  };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     setSavedThisSession(false);
     setPendingInterests(values.interests.join(", "));
     generateStoryMutation.mutate(
-      { data: { childName: values.childName, age: values.age, interests: values.interests as GenerateStoryRequestInterestsItem[], length: values.length } },
+      {
+        data: {
+          childName: values.childName,
+          age: values.age,
+          interests: values.interests as GenerateStoryRequestInterestsItem[],
+          storyLength: values.length,
+          ...(selectedTone ? { tone: selectedTone } : {}),
+        },
+      },
       {
         onSuccess: (result) => {
           setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji, childName: values.childName });
@@ -123,6 +157,8 @@ export default function Home() {
     setPendingInterests("");
     resetPdf();
     form.reset({ childName: "", age: 5, interests: [], length: "5min" });
+    setSelectedChildId(null);
+    setSelectedTone(null);
   };
 
   const paragraphs = generatedStory?.story.split(/\n\n+/).map((p) => p.trim()).filter(Boolean) ?? [];
@@ -176,6 +212,17 @@ export default function Home() {
           </Button>
         )}
       </div>
+
+      {firebaseUser && (
+        <ChildProfileBar
+          children={children}
+          selectedChildId={selectedChildId}
+          onSelect={handleSelectChild}
+          onCreate={async (data) => { await createChild(data); }}
+          onUpdate={async (id, data) => { await updateChild(id, data); }}
+          onDelete={async (id) => { await deleteChild(id); }}
+        />
+      )}
 
       <div className="relative z-10 w-full max-w-4xl mx-auto">
         {generatedStory ? (
@@ -249,11 +296,23 @@ export default function Home() {
                   </FormItem>
                 )} />
 
+                {selectedTone && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Story tone:</span>
+                    <Badge variant="outline" className="rounded-full border-white/10 text-xs capitalize">
+                      {{ calm: "🌙", exciting: "⚡", silly: "😄", adventurous: "🗺️", magical: "✨" }[selectedTone] ?? ""} {selectedTone}
+                    </Badge>
+                  </div>
+                )}
+
                 <div className="pt-2">
                   <motion.div whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                    <Button type="submit" size="lg" className="btn-shimmer w-full h-14 text-lg font-serif rounded-2xl text-white border-0 shadow-[0_0_28px_hsl(262_72%_72%/0.4)]">
-                      <Star className="w-5 h-5 mr-2 fill-white/70" />
-                      Create Magic
+                    <Button type="submit" size="lg" className="btn-shimmer w-full h-14 text-lg font-serif rounded-2xl text-white border-0 shadow-[0_0_28px_hsl(262_72%_72%/0.4)]" disabled={generateStoryMutation.isPending}>
+                      {generateStoryMutation.isPending ? (
+                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Weaving your story…</>
+                      ) : (
+                        <><Star className="w-5 h-5 mr-2 fill-white/70" /> Create Magic</>
+                      )}
                     </Button>
                   </motion.div>
                 </div>
@@ -278,6 +337,52 @@ export default function Home() {
                   </p>
                 ))}
               </div>
+
+              {!savedThisSession && (
+                <div className="mt-8 pt-6 border-t border-white/10">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-white/10 hover:bg-white/5 gap-2"
+                    disabled={saveStoryMutation.isPending}
+                    onClick={() => {
+                      saveStoryMutation.mutate(
+                        {
+                          data: {
+                            childName: generatedStory.childName,
+                            emoji: generatedStory.emoji,
+                            title: generatedStory.title,
+                            story: generatedStory.story,
+                            interests: pendingInterests,
+                            ...(selectedChildId ? { childId: selectedChildId } : {}),
+                          },
+                        },
+                        {
+                          onSuccess: () => {
+                            setSavedThisSession(true);
+                            void queryClient.invalidateQueries({ queryKey: getGetSavedStoriesQueryKey() });
+                          },
+                        }
+                      );
+                    }}
+                  >
+                    {saveStoryMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <BookMarked className="w-4 h-4" />
+                    )}
+                    Save this story
+                  </Button>
+                  {savedThisSession && <span className="ml-3 text-sm text-muted-foreground">Saved ✓</span>}
+                </div>
+              )}
+              {savedThisSession && (
+                <div className="mt-8 pt-6 border-t border-white/10 flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">Story saved ✓</span>
+                  <Button variant="outline" size="sm" className="rounded-xl border-white/10 hover:bg-white/5 gap-2 text-xs" onClick={handleReset}>
+                    <RefreshCw className="w-3.5 h-3.5" /> New story
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
         ) : null}

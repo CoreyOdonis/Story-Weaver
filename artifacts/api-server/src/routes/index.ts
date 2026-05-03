@@ -8,6 +8,7 @@ import illustrationsRouter from "./illustrations";
 import voiceRouter from "./voice";
 import authRouter from "./auth";
 import preferencesRouter from "./preferences";
+import childrenRouter from "./children";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(ttsRouter);
 router.use(streakRouter);
 router.use(illustrationsRouter);
 router.use(voiceRouter);
+router.use(childrenRouter);
 
 export default router;

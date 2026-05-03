@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const idToken = await user.getIdToken().catch(() => null);
       if (!idToken) {
-        await firebaseSignOut(auth).catch(() => undefined);
+        await firebaseSignOut(auth!).catch(() => undefined);
         setFirebaseUser(null);
         setProfile(null);
         setLoading(false);
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      await firebaseSignOut(auth).catch(() => undefined);
+      await firebaseSignOut(auth!).catch(() => undefined);
       setFirebaseUser(null);
       setProfile(null);
       setLoading(false);

@@ -9,10 +9,21 @@ const router = Router();
 router.get("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.firebaseUid ?? null;
+    const childIdParam = req.query.childId ? Number(req.query.childId) : null;
+
+    const userFilter = userId
+      ? or(eq(savedStoriesTable.userId, userId), isNull(savedStoriesTable.userId))
+      : isNull(savedStoriesTable.userId);
+
+    const whereClause =
+      childIdParam && userId
+        ? and(eq(savedStoriesTable.userId, userId), eq(savedStoriesTable.childId, childIdParam))
+        : userFilter;
+
     const stories = await db
       .select()
       .from(savedStoriesTable)
-      .where(userId ? or(eq(savedStoriesTable.userId, userId), isNull(savedStoriesTable.userId)) : isNull(savedStoriesTable.userId))
+      .where(whereClause)
       .orderBy(desc(savedStoriesTable.createdAt));
     res.json(stories);
   } catch (err) {
@@ -22,12 +33,13 @@ router.get("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
 });
 
 router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
-  const { childName, emoji, title, story, interests } = req.body as {
+  const { childName, emoji, title, story, interests, childId } = req.body as {
     childName?: string;
     emoji?: string;
     title?: string;
     story?: string;
     interests?: string;
+    childId?: number;
   };
 
   if (!childName || !emoji || !title || !story || !interests) {
@@ -40,6 +52,7 @@ router.post("/saved-stories", optionalAuth, async (req: AuthRequest, res) => {
       .insert(savedStoriesTable)
       .values({
         userId: req.firebaseUid ?? null,
+        childId: childId ?? null,
         childName,
         emoji,
         title,
