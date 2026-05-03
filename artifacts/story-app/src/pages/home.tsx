@@ -65,6 +65,7 @@ export default function Home() {
   const [pendingInterests, setPendingInterests] = useState<string>("");
   const [storyProgress, setStoryProgress] = useState(0);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  const [selectedChild, setSelectedChild] = useState<ChildProfile | null>(null);
   const [selectedTone, setSelectedTone] = useState<GenerateStoryRequestTone | null>(null);
 
   const { firebaseUser, profile, loading: authLoading, signInWithGoogle, signOut } = useAuth();
@@ -87,7 +88,7 @@ export default function Home() {
   });
 
   useEffect(() => {
-    if (!preferences || prefsApplied) return;
+    if (!preferences || prefsApplied || selectedChildId) return;
     const patch: Partial<z.infer<typeof formSchema>> = {};
     if (preferences.childName) patch.childName = preferences.childName;
     if (preferences.age) patch.age = preferences.age;
@@ -95,17 +96,19 @@ export default function Home() {
     if (preferences.storyLength) patch.length = preferences.storyLength;
     if (Object.keys(patch).length > 0) form.reset({ ...form.getValues(), ...patch });
     setPrefsApplied(true);
-  }, [preferences, prefsApplied, form]);
+  }, [preferences, prefsApplied, form, selectedChildId]);
 
   useEffect(() => {
     if (!firebaseUser) {
       setPrefsApplied(false);
       setSelectedChildId(null);
+      setSelectedChild(null);
       setSelectedTone(null);
     }
   }, [firebaseUser]);
 
   const handleSelectChild = (child: ChildProfile | null) => {
+    setSelectedChild(child);
     if (!child) {
       setSelectedChildId(null);
       setSelectedTone(null);
@@ -113,36 +116,37 @@ export default function Home() {
     }
     setSelectedChildId(child.id);
     setSelectedTone((child.tone as GenerateStoryRequestTone) ?? null);
-    const patch: Partial<z.infer<typeof formSchema>> = {};
-    if (child.name) patch.childName = child.name;
-    if (child.age) patch.age = child.age;
-    if (child.interests?.length) patch.interests = child.interests;
-    if (child.defaultStoryLength) patch.length = child.defaultStoryLength;
-    form.reset({ ...form.getValues(), ...patch });
+    form.reset({
+      childName: child.name,
+      age: child.age ?? 5,
+      interests: child.interests,
+      length: child.defaultStoryLength ?? "5min",
+    });
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!selectedChild) return;
     setSavedThisSession(false);
-    setPendingInterests(values.interests.join(", "));
+    setPendingInterests(selectedChild.interests.join(", "));
     generateStoryMutation.mutate(
       {
         data: {
-          childName: values.childName,
-          age: values.age,
-          interests: values.interests as GenerateStoryRequestInterestsItem[],
+          childName: selectedChild.name,
+          age: selectedChild.age ?? values.age,
+          interests: selectedChild.interests as GenerateStoryRequestInterestsItem[],
           storyLength: values.length,
           ...(selectedTone ? { tone: selectedTone } : {}),
         },
       },
       {
         onSuccess: (result) => {
-          setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji, childName: values.childName });
+          setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji, childName: selectedChild.name });
           recordActivity();
           if (firebaseUser) {
             void savePreferences({
-              childName: values.childName,
-              age: values.age,
-              interests: values.interests,
+              childName: selectedChild.name,
+              age: selectedChild.age ?? values.age,
+              interests: selectedChild.interests,
               storyLength: values.length,
             });
           }
@@ -158,6 +162,7 @@ export default function Home() {
     resetPdf();
     form.reset({ childName: "", age: 5, interests: [], length: "5min" });
     setSelectedChildId(null);
+    setSelectedChild(null);
     setSelectedTone(null);
   };
 
@@ -307,7 +312,7 @@ export default function Home() {
 
                 <div className="pt-2">
                   <motion.div whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                    <Button type="submit" size="lg" className="btn-shimmer w-full h-14 text-lg font-serif rounded-2xl text-white border-0 shadow-[0_0_28px_hsl(262_72%_72%/0.4)]" disabled={generateStoryMutation.isPending}>
+                    <Button type="submit" size="lg" className="btn-shimmer w-full h-14 text-lg font-serif rounded-2xl text-white border-0 shadow-[0_0_28px_hsl(262_72%_72%/0.4)]" disabled={generateStoryMutation.isPending || !selectedChild}>
                       {generateStoryMutation.isPending ? (
                         <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Weaving your story…</>
                       ) : (
@@ -343,17 +348,18 @@ export default function Home() {
                   <Button
                     variant="outline"
                     className="rounded-xl border-white/10 hover:bg-white/5 gap-2"
-                    disabled={saveStoryMutation.isPending}
+                    disabled={saveStoryMutation.isPending || !selectedChildId}
                     onClick={() => {
+                      if (!selectedChildId || !selectedChild) return;
                       saveStoryMutation.mutate(
                         {
                           data: {
-                            childName: generatedStory.childName,
+                            childName: selectedChild.name,
                             emoji: generatedStory.emoji,
                             title: generatedStory.title,
                             story: generatedStory.story,
                             interests: pendingInterests,
-                            ...(selectedChildId ? { childId: selectedChildId } : {}),
+                            childId: selectedChildId,
                           },
                         },
                         {
