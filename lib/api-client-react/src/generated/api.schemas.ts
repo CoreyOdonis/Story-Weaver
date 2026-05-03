@@ -66,6 +66,28 @@ export interface DeleteResponse {
   success: boolean;
 }
 
+export interface StreakData {
+  /** Current streak count (0 if no activity yet) */
+  streakCount: number;
+  /** ISO date string of last activity (YYYY-MM-DD), or null */
+  lastActivityDate: string | null;
+}
+
+export interface StreakActivityRequest {
+  clientId: string;
+}
+
+export interface StreakResult {
+  /** New streak count after recording activity */
+  streakCount: number;
+  /** Whether the streak increased compared to the previous value */
+  increased: boolean;
+}
+
 export interface ErrorResponse {
   error: string;
 }
+
+export type GetStreakParams = {
+  clientId: string;
+};

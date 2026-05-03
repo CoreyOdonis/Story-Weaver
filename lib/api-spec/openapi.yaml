@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: stories
     description: Story generation and storage operations
+  - name: streak
+    description: Daily streak tracking
 paths:
   /healthz:
     get:
@@ -115,6 +117,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /streak:
+    get:
+      operationId: getStreak
+      tags: [streak]
+      summary: Get current streak
+      description: Returns the current streak for a given client ID
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current streak data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreakData"
+        "400":
+          description: Missing clientId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /streak/activity:
+    post:
+      operationId: recordStreakActivity
+      tags: [streak]
+      summary: Record daily activity
+      description: Records activity for today and updates the streak counter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StreakActivityRequest"
+      responses:
+        "200":
+          description: Updated streak result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreakResult"
+        "400":
+          description: Missing clientId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -214,6 +266,38 @@ components:
           type: boolean
       required:
         - success
+    StreakData:
+      type: object
+      properties:
+        streakCount:
+          type: integer
+          description: Current streak count (0 if no activity yet)
+        lastActivityDate:
+          type: string
+          nullable: true
+          description: ISO date string of last activity (YYYY-MM-DD), or null
+      required:
+        - streakCount
+        - lastActivityDate
+    StreakActivityRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+      required:
+        - clientId
+    StreakResult:
+      type: object
+      properties:
+        streakCount:
+          type: integer
+          description: New streak count after recording activity
+        increased:
+          type: boolean
+          description: Whether the streak increased compared to the previous value
+      required:
+        - streakCount
+        - increased
     ErrorResponse:
       type: object
       properties:

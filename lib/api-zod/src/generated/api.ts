@@ -79,3 +79,38 @@ export const DeleteSavedStoryParams = zod.object({
 export const DeleteSavedStoryResponse = zod.object({
   success: zod.boolean(),
 });
+
+/**
+ * Returns the current streak for a given client ID
+ * @summary Get current streak
+ */
+export const GetStreakQueryParams = zod.object({
+  clientId: zod.coerce.string(),
+});
+
+export const GetStreakResponse = zod.object({
+  streakCount: zod
+    .number()
+    .describe("Current streak count (0 if no activity yet)"),
+  lastActivityDate: zod
+    .string()
+    .nullable()
+    .describe("ISO date string of last activity (YYYY-MM-DD), or null"),
+});
+
+/**
+ * Records activity for today and updates the streak counter
+ * @summary Record daily activity
+ */
+export const RecordStreakActivityBody = zod.object({
+  clientId: zod.string(),
+});
+
+export const RecordStreakActivityResponse = zod.object({
+  streakCount: zod
+    .number()
+    .describe("New streak count after recording activity"),
+  increased: zod
+    .boolean()
+    .describe("Whether the streak increased compared to the previous value"),
+});

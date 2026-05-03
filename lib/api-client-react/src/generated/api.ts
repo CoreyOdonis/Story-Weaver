@@ -21,9 +21,13 @@ import type {
   ErrorResponse,
   GenerateStoryRequest,
   GenerateStoryResponse,
+  GetStreakParams,
   HealthStatus,
   SaveStoryRequest,
   SavedStory,
+  StreakActivityRequest,
+  StreakData,
+  StreakResult,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -444,4 +448,186 @@ export const useDeleteSavedStory = <
   TContext
 > => {
   return useMutation(getDeleteSavedStoryMutationOptions(options));
+};
+
+/**
+ * Returns the current streak for a given client ID
+ * @summary Get current streak
+ */
+export const getGetStreakUrl = (params: GetStreakParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/streak?${stringifiedParams}`
+    : `/api/streak`;
+};
+
+export const getStreak = async (
+  params: GetStreakParams,
+  options?: RequestInit,
+): Promise<StreakData> => {
+  return customFetch<StreakData>(getGetStreakUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStreakQueryKey = (params?: GetStreakParams) => {
+  return [`/api/streak`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetStreakQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStreak>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: GetStreakParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStreak>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStreakQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStreak>>> = ({
+    signal,
+  }) => getStreak(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStreak>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStreakQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStreak>>
+>;
+export type GetStreakQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get current streak
+ */
+
+export function useGetStreak<
+  TData = Awaited<ReturnType<typeof getStreak>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: GetStreakParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStreak>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStreakQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Records activity for today and updates the streak counter
+ * @summary Record daily activity
+ */
+export const getRecordStreakActivityUrl = () => {
+  return `/api/streak/activity`;
+};
+
+export const recordStreakActivity = async (
+  streakActivityRequest: StreakActivityRequest,
+  options?: RequestInit,
+): Promise<StreakResult> => {
+  return customFetch<StreakResult>(getRecordStreakActivityUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(streakActivityRequest),
+  });
+};
+
+export const getRecordStreakActivityMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordStreakActivity>>,
+    TError,
+    { data: BodyType<StreakActivityRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordStreakActivity>>,
+  TError,
+  { data: BodyType<StreakActivityRequest> },
+  TContext
+> => {
+  const mutationKey = ["recordStreakActivity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordStreakActivity>>,
+    { data: BodyType<StreakActivityRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return recordStreakActivity(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordStreakActivityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recordStreakActivity>>
+>;
+export type RecordStreakActivityMutationBody = BodyType<StreakActivityRequest>;
+export type RecordStreakActivityMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Record daily activity
+ */
+export const useRecordStreakActivity = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordStreakActivity>>,
+    TError,
+    { data: BodyType<StreakActivityRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recordStreakActivity>>,
+  TError,
+  { data: BodyType<StreakActivityRequest> },
+  TContext
+> => {
+  return useMutation(getRecordStreakActivityMutationOptions(options));
 };

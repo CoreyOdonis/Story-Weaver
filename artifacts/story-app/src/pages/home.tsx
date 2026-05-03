@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useReadAloud } from "@/hooks/useReadAloud";
+import { useStreak } from "@/hooks/useStreak";
 
 const INTEREST_OPTIONS: { id: GenerateStoryRequestInterestsItem; label: string; icon: string }[] = [
   { id: "dinosaurs", label: "Dinosaurs", icon: "🦕" },
@@ -235,6 +236,72 @@ function LoadingOrbit() {
   );
 }
 
+/* ── Streak Badge ── */
+const BURST_PARTICLES = [
+  { angle: 0 }, { angle: 45 }, { angle: 90 }, { angle: 135 },
+  { angle: 180 }, { angle: 225 }, { angle: 270 }, { angle: 315 },
+];
+
+function StreakBadge({ count, justIncreased }: { count: number; justIncreased: boolean }) {
+  if (count === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.7, y: -8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", bounce: 0.45, delay: 0.3 }}
+      className="relative flex justify-center mb-4"
+      data-testid="streak-badge"
+    >
+      {/* Burst particles on increase */}
+      <AnimatePresence>
+        {justIncreased && BURST_PARTICLES.map((p, i) => {
+          const rad = (p.angle * Math.PI) / 180;
+          const tx = Math.cos(rad) * 40;
+          const ty = Math.sin(rad) * 40;
+          return (
+            <motion.span
+              key={i}
+              initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+              animate={{ opacity: 0, x: tx, y: ty, scale: 0.3 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut", delay: i * 0.03 }}
+              className="absolute text-sm pointer-events-none select-none"
+              style={{ top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}
+              aria-hidden="true"
+            >✨</motion.span>
+          );
+        })}
+      </AnimatePresence>
+
+      <motion.div
+        animate={justIncreased ? { scale: [1, 1.3, 0.9, 1.1, 1] } : { scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold border transition-all select-none
+          ${justIncreased
+            ? "bg-orange-500/20 border-orange-400/50 text-orange-300 shadow-[0_0_18px_hsl(25_90%_60%/0.45)]"
+            : "bg-white/6 border-white/10 text-foreground/70"
+          }`}
+      >
+        <motion.span
+          animate={justIncreased ? { rotate: [0, -15, 15, -10, 0] } : {}}
+          transition={{ duration: 0.5 }}
+          className="text-base leading-none"
+        >🔥</motion.span>
+        <span>{count} Day{count !== 1 ? "s" : ""} Streak</span>
+        {justIncreased && (
+          <motion.span
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-orange-300 text-xs font-bold"
+          >+1</motion.span>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ── Saved story accordion item ── */
 function SavedStoryCard({
   story,
@@ -319,6 +386,7 @@ export default function Home() {
   const [showSaved, setShowSaved] = useState(false);
 
   const queryClient = useQueryClient();
+  const { streakCount, justIncreased, recordActivity } = useStreak();
   const generateStoryMutation = useGenerateStory();
   const saveStoryMutation = useSaveStory();
   const deleteStoryMutation = useDeleteSavedStory();
@@ -336,7 +404,12 @@ export default function Home() {
     setPendingInterests(values.interests.join(", "));
     generateStoryMutation.mutate(
       { data: { childName: values.childName, age: values.age, interests: values.interests as GenerateStoryRequestInterestsItem[] } },
-      { onSuccess: (result) => setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji }) }
+      {
+        onSuccess: (result) => {
+          setGeneratedStory({ title: result.title, story: result.story, emoji: result.emoji });
+          recordActivity();
+        },
+      }
     );
   };
 
@@ -408,6 +481,8 @@ export default function Home() {
             Magical bedtime tales, created just for you.
           </motion.p>
         </div>
+
+        <StreakBadge count={streakCount} justIncreased={justIncreased} />
 
         <AnimatePresence mode="wait">
 
