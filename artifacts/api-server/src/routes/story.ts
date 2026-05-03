@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { PostGenerateStoryBody } from "@workspace/api-zod";
+import { db, savedStoriesTable } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
@@ -32,9 +34,43 @@ const LENGTH_MAP: Record<"5min" | "10min" | "15min", string> = {
   "15min": "1300–1800",
 };
 
+function summarizeStory(story: string): string {
+  const cleaned = story.replace(/\s+/g, " ").trim();
+  return cleaned.length > 700 ? `${cleaned.slice(0, 700).trim()}…` : cleaned;
+}
+
+async function generateStoryJson(systemPrompt: string, userPrompt: string, interests: string[]) {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    max_completion_tokens: 8192,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? "";
+  let parsed: { title?: string; story?: string; emoji?: string };
+  try {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(jsonMatch?.[0] ?? raw) as typeof parsed;
+  } catch {
+    return { error: "Story generation failed — please try again." } as const;
+  }
+
+  if (!parsed.title || !parsed.story || !parsed.emoji) {
+    return { error: "Story generation failed — please try again." } as const;
+  }
+
+  return {
+    title: parsed.title,
+    story: parsed.story,
+    emoji: parsed.emoji || pickEmoji(interests),
+  } as const;
+}
+
 router.post("/generate-story", async (req, res) => {
   const result = PostGenerateStoryBody.safeParse(req.body);
-
   if (!result.success) {
     res.status(400).json({ error: result.error.message });
     return;
@@ -57,41 +93,77 @@ router.post("/generate-story", async (req, res) => {
   ].join(" ");
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 8192,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: `Generate a ${toneDesc} bedtime story for ${childName}, age ${age}, who loves: ${interestsList}. Length: ~${wordCount} words.`,
-        },
-      ],
-    });
+    const result = await generateStoryJson(
+      systemPrompt,
+      `Generate a ${toneDesc} bedtime story for ${childName}, age ${age}, who loves: ${interestsList}. Length: ~${wordCount} words.`,
+      interests
+    );
+    if ("error" in result) {
+      res.status(500).json({ error: result.error });
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "OpenAI API error");
+    res.status(502).json({ error: "Could not reach the story magic right now — please try again!" });
+  }
+});
 
-    const raw = completion.choices[0]?.message?.content ?? "";
+router.post("/continue-story", async (req, res) => {
+  const body = req.body as {
+    childName?: string;
+    age?: number;
+    interests?: string[];
+    storyLength?: "5min" | "10min" | "15min";
+    tone?: string;
+    seriesId?: number;
+  };
 
-    let parsed: { title?: string; story?: string; emoji?: string };
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(jsonMatch?.[0] ?? raw) as typeof parsed;
-    } catch {
-      req.log.error({ raw }, "Failed to parse OpenAI JSON response");
-      res.status(500).json({ error: "Story generation failed — please try again." });
+  if (!body.childName || !body.age || !Array.isArray(body.interests) || body.interests.length === 0 || !body.seriesId) {
+    res.status(400).json({ error: "Missing required fields." });
+    return;
+  }
+
+  try {
+    const [lastStory] = await db
+      .select()
+      .from(savedStoriesTable)
+      .where(eq(savedStoriesTable.seriesId, body.seriesId))
+      .orderBy(desc(savedStoriesTable.episodeNumber), desc(savedStoriesTable.createdAt))
+      .limit(1);
+
+    if (!lastStory) {
+      res.status(404).json({ error: "No previous story found in this series." });
       return;
     }
 
-    if (!parsed.title || !parsed.story || !parsed.emoji) {
-      req.log.error({ parsed }, "OpenAI response missing required fields");
-      res.status(500).json({ error: "Story generation failed — please try again." });
+    const previousSummary = summarizeStory(lastStory.story);
+    const interestsList = body.interests.join(", ");
+    const wordCount = LENGTH_MAP[body.storyLength ?? "5min"] ?? LENGTH_MAP["5min"];
+    const toneDesc = body.tone && body.tone in toneDescriptions ? toneDescriptions[body.tone] : "gentle and soothing";
+
+    const systemPrompt = [
+      `Write the next episode in a ${toneDesc} bedtime story series for a ${body.age}-year-old child named ${body.childName}.`,
+      "Maintain the same characters, setting, and overall feel from the previous episode.",
+      `Previous episode summary: ${previousSummary}`,
+      `Include their interests: ${interestsList}.`,
+      `The new episode should be approximately ${wordCount} words long.`,
+      "Continue the narrative naturally from the previous episode.",
+      "End with a soft bedtime conclusion that feels calm and satisfying.",
+      'Respond ONLY with a valid JSON object in this exact format: {"title": "...", "story": "...", "emoji": "..."}',
+      "Do not include any text outside the JSON.",
+    ].join(" ");
+
+    const result = await generateStoryJson(
+      systemPrompt,
+      `Continue the story for ${body.childName}.`,
+      body.interests
+    );
+    if ("error" in result) {
+      res.status(500).json({ error: result.error });
       return;
     }
-
-    res.json({
-      title: parsed.title,
-      story: parsed.story,
-      emoji: parsed.emoji || pickEmoji(interests),
-    });
+    res.json(result);
   } catch (err) {
     req.log.error({ err }, "OpenAI API error");
     res.status(502).json({ error: "Could not reach the story magic right now — please try again!" });
